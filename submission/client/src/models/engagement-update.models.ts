@@ -1,8 +1,23 @@
 // Types mirroring the server API contract defined in DESIGN.md
 
-export type UpdateStatus = 'UP_TO_DATE' | 'PENDING' | 'COMPUTING' | 'ERROR';
-export type ChangeType = 'ADDED' | 'MODIFIED' | 'REMOVED';
-export type Impact = 'HIGH' | 'MEDIUM' | 'LOW';
+export enum UpdateStatus {
+  UP_TO_DATE = 'UP_TO_DATE',
+  PENDING = 'PENDING',
+  COMPUTING = 'COMPUTING',
+  ERROR = 'ERROR',
+}
+
+export enum ChangeType {
+  ADDED = 'ADDED',
+  MODIFIED = 'MODIFIED',
+  REMOVED = 'REMOVED',
+}
+
+export enum Impact {
+  HIGH = 'HIGH',
+  MEDIUM = 'MEDIUM',
+  LOW = 'LOW',
+}
 
 export interface EngagementUpdateSummary {
   engagementId: string;
@@ -49,15 +64,25 @@ export interface HumanReadableChange {
   impact: Impact;
 }
 
+export enum DecisionType {
+  APPLY = 'APPLY',
+  DECLINE = 'DECLINE',
+}
+
+export enum DecisionStatus {
+  ACCEPTED = 'ACCEPTED',
+  PROCESSING = 'PROCESSING',
+}
+
 export interface UpdateDecisionRequest {
-  decision: 'APPLY' | 'DECLINE';
+  decision: DecisionType;
   targetVersion: number;
 }
 
 export interface UpdateDecisionResponse {
   engagementId: string;
-  decision: 'APPLY' | 'DECLINE';
+  decision: DecisionType;
   previousVersion: number;
   targetVersion: number;
-  status: 'ACCEPTED' | 'PROCESSING';
+  status: DecisionStatus;
 }

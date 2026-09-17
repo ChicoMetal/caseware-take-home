@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EngagementUpdateService } from '../../services/engagement-update.service';
 import { UpdateDetailComponent } from '../update-detail/update-detail.component';
+import { UpdateStatus, DecisionType } from '../../models/engagement-update.models';
 
 @Component({
   selector: 'app-engagement-list',
@@ -12,6 +13,7 @@ import { UpdateDetailComponent } from '../update-detail/update-detail.component'
 export class EngagementListComponent {
   private readonly updateService = inject(EngagementUpdateService);
 
+  readonly UpdateStatus = UpdateStatus;
   readonly engagements = this.updateService.engagements;
   readonly selectedDetails = this.updateService.selectedDetails;
 
@@ -20,21 +22,19 @@ export class EngagementListComponent {
   }
 
   onApply(engagementId: string): void {
-    this.updateService.submitDecision(engagementId, 'APPLY');
+    this.updateService.submitDecision(engagementId, DecisionType.APPLY);
   }
 
-  statusLabel(status: string): string {
+  statusLabel(status: UpdateStatus): string {
     switch (status) {
-      case 'UP_TO_DATE':
+      case UpdateStatus.UP_TO_DATE:
         return 'Up to date';
-      case 'PENDING':
+      case UpdateStatus.PENDING:
         return 'Update available';
-      case 'COMPUTING':
+      case UpdateStatus.COMPUTING:
         return 'Preparing summary...';
-      case 'ERROR':
+      case UpdateStatus.ERROR:
         return 'Error';
-      default:
-        return status;
     }
   }
 }

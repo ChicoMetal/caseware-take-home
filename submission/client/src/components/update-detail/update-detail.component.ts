@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import {
   EngagementUpdateDetails,
   ChangeSummary,
+  ChangeType,
+  Impact,
 } from '../../models/engagement-update.models';
 
 @Component({
@@ -33,29 +35,25 @@ export class UpdateDetailComponent {
     this.apply.emit();
   }
 
-  changeTypeLabel(type: string): string {
+  changeTypeLabel(type: ChangeType): string {
     switch (type) {
-      case 'ADDED':
+      case ChangeType.ADDED:
         return '+';
-      case 'MODIFIED':
+      case ChangeType.MODIFIED:
         return '~';
-      case 'REMOVED':
+      case ChangeType.REMOVED:
         return '-';
-      default:
-        return '?';
     }
   }
 
-  impactLabel(impact: string): string {
+  impactLabel(impact: Impact): string {
     switch (impact) {
-      case 'HIGH':
+      case Impact.HIGH:
         return '[HIGH]';
-      case 'MEDIUM':
+      case Impact.MEDIUM:
         return '[MED]';
-      case 'LOW':
+      case Impact.LOW:
         return '[LOW]';
-      default:
-        return '';
     }
   }
 }

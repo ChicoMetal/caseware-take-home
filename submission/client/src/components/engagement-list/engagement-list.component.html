@@ -23,12 +23,12 @@
           }
         </td>
         <td>
-          @if (engagement.status === 'PENDING' && engagement.summaryAvailable) {
+          @if (engagement.status === UpdateStatus.PENDING && engagement.summaryAvailable) {
             <button (click)="selectEngagement(engagement.engagementId)">
               Review Changes
             </button>
           }
-          @if (engagement.status === 'COMPUTING') {
+          @if (engagement.status === UpdateStatus.COMPUTING) {
             <span>Calculating...</span>
           }
         </td>
