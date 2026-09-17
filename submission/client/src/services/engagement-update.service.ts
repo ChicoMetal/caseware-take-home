@@ -303,8 +303,8 @@ export class EngagementUpdateService {
    */
   submitDecision(engagementId: string, decision: DecisionType): void {
     if (decision === DecisionType.APPLY) {
-      this.engagements.update((engagements) =>
-        engagements.map((e) => {
+      this.engagements.update((engagements: EngagementUpdateSummary[]) =>
+        engagements.map((e: EngagementUpdateSummary) => {
           if (e.engagementId !== engagementId) return e;
           return {
             ...e,
@@ -319,8 +319,8 @@ export class EngagementUpdateService {
     }
 
     if (decision === DecisionType.DECLINE) {
-      this.engagements.update((engagements) =>
-        engagements.map((e) => {
+      this.engagements.update((engagements: EngagementUpdateSummary[]) =>
+        engagements.map((e: EngagementUpdateSummary) => {
           if (e.engagementId !== engagementId) return e;
           return {
             ...e,

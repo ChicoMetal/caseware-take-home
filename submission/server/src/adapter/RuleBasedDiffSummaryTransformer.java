@@ -162,7 +162,7 @@ public class RuleBasedDiffSummaryTransformer implements DiffSummaryTransformer {
         if (obj instanceof Map<?, ?> map && map.get("label") instanceof String label) {
             return label;
         }
-        return null;
+        return "unknown";
     }
 
     private static boolean isRequired(Object obj) {

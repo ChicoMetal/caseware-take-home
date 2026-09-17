@@ -8,6 +8,7 @@ import domain.port.TemplateVersionProvider;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Domain service that resolves engagement update state without loading full engagement files.
@@ -23,9 +24,9 @@ public class UpdateStateResolver {
     public UpdateStateResolver(TemplateDiffProvider diffProvider,
                                DiffSummaryTransformer summaryTransformer,
                                TemplateVersionProvider templateProvider) {
-        this.diffProvider = diffProvider;
-        this.summaryTransformer = summaryTransformer;
-        this.templateProvider = templateProvider;
+        this.diffProvider = Objects.requireNonNull(diffProvider, "diffProvider");
+        this.summaryTransformer = Objects.requireNonNull(summaryTransformer, "summaryTransformer");
+        this.templateProvider = Objects.requireNonNull(templateProvider, "templateProvider");
     }
 
     /**

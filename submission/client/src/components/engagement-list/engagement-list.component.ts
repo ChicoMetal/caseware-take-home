@@ -48,6 +48,8 @@ export class EngagementListComponent {
         return 'Declined';
       case UpdateStatus.ERROR:
         return 'Error';
+      default:
+        return status satisfies never;
     }
   }
 }

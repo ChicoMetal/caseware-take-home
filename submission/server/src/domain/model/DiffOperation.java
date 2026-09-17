@@ -3,9 +3,15 @@ package domain.model;
 /**
  * Single JSON Patch-style operation from a template diff.
  *
- * @param op    the operation type: "add", "replace", or "remove"
- * @param path  JSON Pointer path, e.g. {@code /sections/materiality/threshold}
- * @param value the new value (for "add" operations)
+ * <p>Fields {@code value}, {@code oldValue}, and {@code newValue} use {@code Object}
+ * because JSON Patch payloads are heterogeneous (strings, numbers, nested maps).
+ * Type narrowing happens at the adapter layer (e.g., {@code RuleBasedDiffSummaryTransformer}).
+ *
+ * @param op       the operation type: "add", "replace", or "remove"
+ * @param path     JSON Pointer path, e.g. {@code /sections/materiality/threshold}
+ * @param value    the new value (for "add" operations); may be a Map, String, or Number
+ * @param oldValue the previous value (for "replace" and "remove" operations)
+ * @param newValue the replacement value (for "replace" operations)
  */
 public record DiffOperation(
     String op,

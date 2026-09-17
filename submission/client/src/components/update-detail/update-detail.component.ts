@@ -65,6 +65,8 @@ export class UpdateDetailComponent {
         return '~';
       case ChangeType.REMOVED:
         return '-';
+      default:
+        return type satisfies never;
     }
   }
 
@@ -77,6 +79,8 @@ export class UpdateDetailComponent {
         return '[MED]';
       case Impact.LOW:
         return '[LOW]';
+      default:
+        return impact satisfies never;
     }
   }
 }
