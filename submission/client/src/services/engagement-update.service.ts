@@ -1,4 +1,4 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import {
   EngagementUpdateSummary,
   EngagementUpdateDetails,
@@ -269,17 +269,9 @@ const FIXTURE_ENGAGEMENTS: EngagementUpdateSummary[] = [
 export class EngagementUpdateService {
   readonly engagements = signal<EngagementUpdateSummary[]>(FIXTURE_ENGAGEMENTS);
   readonly selectedDetails = signal<EngagementUpdateDetails | null>(null);
-  readonly loading = signal<boolean>(false);
-
-  readonly pendingEngagements = computed(() =>
-    this.engagements().filter((e) => e.status === UpdateStatus.PENDING)
-  );
-
   selectEngagement(engagementId: string): void {
-    this.loading.set(true);
     const details = FIXTURE_DETAILS[engagementId] ?? null;
     this.selectedDetails.set(details);
-    this.loading.set(false);
   }
 
   clearSelection(): void {

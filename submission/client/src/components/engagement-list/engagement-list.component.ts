@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EngagementUpdateService } from '../../services/engagement-update.service';
 import { UpdateDetailComponent } from '../update-detail/update-detail.component';
@@ -9,6 +9,7 @@ import { UpdateStatus, DecisionType } from '../../models/engagement-update.model
   standalone: true,
   imports: [CommonModule, UpdateDetailComponent],
   templateUrl: './engagement-list.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EngagementListComponent {
   private readonly updateService = inject(EngagementUpdateService);

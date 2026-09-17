@@ -1,6 +1,6 @@
 <section>
   <h2>
-    Update Details — v{{ details.currentVersion }} → v{{ details.latestVersion }}
+    Update Details — v{{ details().currentVersion }} → v{{ details().latestVersion }}
   </h2>
 
   <div>
@@ -9,17 +9,16 @@
     </button>
   </div>
 
-  <!-- Collapsed View (default) -->
   @if (!showStepByStep()) {
     <h3>
-      All changes: v{{ activeSummary.fromVersion }} → v{{ activeSummary.toVersion }}
-      ({{ activeSummary.totalChanges }} changes)
+      All changes: v{{ activeSummary().fromVersion }} → v{{ activeSummary().toVersion }}
+      ({{ activeSummary().totalChanges }} changes)
     </h3>
 
-    @for (section of activeSummary.sections; track section.sectionPath) {
+    @for (section of activeSummary().sections; track section.sectionPath) {
       <h4>{{ section.sectionDisplayName }}</h4>
       <ul>
-        @for (change of section.changes; track change.description) {
+        @for (change of section.changes; track $index) {
           <li>
             <strong>{{ changeTypeLabel(change.type) }}</strong>
             {{ change.description }}
@@ -28,11 +27,8 @@
         }
       </ul>
     }
-  }
-
-  <!-- Step-by-Step View -->
-  @if (showStepByStep()) {
-    @for (step of stepSummaries; track step.fromVersion) {
+  } @else {
+    @for (step of stepSummaries(); track step.fromVersion) {
       <h3>
         Version {{ step.fromVersion }} → {{ step.toVersion }}
         ({{ step.totalChanges }} changes, published {{ step.publishedAt }})
@@ -41,7 +37,7 @@
       @for (section of step.sections; track section.sectionPath) {
         <h4>{{ section.sectionDisplayName }}</h4>
         <ul>
-          @for (change of section.changes; track change.description) {
+          @for (change of section.changes; track $index) {
             <li>
               <strong>{{ changeTypeLabel(change.type) }}</strong>
               {{ change.description }}
@@ -54,7 +50,7 @@
   }
 
   <div>
-    <button (click)="onApply()">Apply Update to v{{ details.latestVersion }}</button>
+    <button (click)="onApply()">Apply Update to v{{ details().latestVersion }}</button>
     <button (click)="onDecline()">Decline Update</button>
   </div>
 </section>

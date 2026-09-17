@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   EngagementUpdateDetails,
@@ -12,21 +12,22 @@ import {
   standalone: true,
   imports: [CommonModule],
   templateUrl: './update-detail.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class UpdateDetailComponent {
-  @Input({ required: true }) details!: EngagementUpdateDetails;
-  @Output() apply = new EventEmitter<void>();
-  @Output() decline = new EventEmitter<void>();
+  readonly details = input.required<EngagementUpdateDetails>();
+  readonly apply = output<void>();
+  readonly decline = output<void>();
 
   readonly showStepByStep = signal(false);
 
-  get activeSummary(): ChangeSummary {
-    return this.details.collapsedSummary;
-  }
+  readonly activeSummary = computed<ChangeSummary>(
+    () => this.details().collapsedSummary
+  );
 
-  get stepSummaries(): ChangeSummary[] {
-    return this.details.stepByStepSummaries;
-  }
+  readonly stepSummaries = computed<ChangeSummary[]>(
+    () => this.details().stepByStepSummaries
+  );
 
   toggleView(): void {
     this.showStepByStep.update((v) => !v);
