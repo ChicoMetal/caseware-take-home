@@ -4,6 +4,10 @@ import { EngagementUpdateService } from '../../services/engagement-update.servic
 import { UpdateDetailComponent } from '../update-detail/update-detail.component';
 import { UpdateStatus, DecisionType } from '../../models/engagement-update.models';
 
+/**
+ * Main list view showing all firm engagements and their template update status.
+ * Delegates to {@link UpdateDetailComponent} for the selected engagement's detail panel.
+ */
 @Component({
   selector: 'app-engagement-list',
   standalone: true,
@@ -14,6 +18,7 @@ import { UpdateStatus, DecisionType } from '../../models/engagement-update.model
 export class EngagementListComponent {
   private readonly updateService = inject(EngagementUpdateService);
 
+  /** Exposed for template enum comparisons (e.g., status === UpdateStatus.PENDING). */
   readonly UpdateStatus = UpdateStatus;
   readonly engagements = this.updateService.engagements;
   readonly selectedDetails = this.updateService.selectedDetails;
@@ -30,6 +35,7 @@ export class EngagementListComponent {
     this.updateService.submitDecision(engagementId, DecisionType.DECLINE);
   }
 
+  /** Maps {@link UpdateStatus} enum values to user-facing display text. */
   statusLabel(status: UpdateStatus): string {
     switch (status) {
       case UpdateStatus.UP_TO_DATE:

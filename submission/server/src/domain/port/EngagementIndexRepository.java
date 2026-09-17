@@ -12,9 +12,23 @@ import java.util.Optional;
  */
 public interface EngagementIndexRepository {
 
+    /**
+     * @param firmId the audit firm identifier
+     * @return all engagement index entries for the firm
+     */
     List<EngagementRecord> findByFirmId(String firmId);
 
+    /**
+     * @param engagementId the engagement identifier
+     * @return the index entry, or empty if the engagement is not indexed
+     */
     Optional<EngagementRecord> findById(String engagementId);
 
+    /**
+     * Updates the cached template version after a successful update apply.
+     *
+     * @param engagementId the engagement to update
+     * @param newVersion   the template version the engagement is now on
+     */
     void updateVersion(String engagementId, int newVersion);
 }

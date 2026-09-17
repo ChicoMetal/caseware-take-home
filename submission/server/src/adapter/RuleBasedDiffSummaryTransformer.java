@@ -6,6 +6,22 @@ import domain.port.DiffSummaryTransformer;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Deterministic, rule-based implementation of {@link DiffSummaryTransformer}.
+ *
+ * <p>This is the default strategy. The port abstraction allows swapping in an LLM-based
+ * transformer for richer natural-language descriptions without changing domain logic.
+ *
+ * <p><b>Description generation</b>: branches on operation type (add/replace/remove),
+ * extracting labels and element types from the diff payload when available.
+ *
+ * <p><b>Impact assessment rules</b>:
+ * <ul>
+ *   <li>HIGH - new required fields, or changes to threshold/scoring paths</li>
+ *   <li>MEDIUM - removals, or additions of new checklists/questions</li>
+ *   <li>LOW - label/text replacements and all other modifications</li>
+ * </ul>
+ */
 public class RuleBasedDiffSummaryTransformer implements DiffSummaryTransformer {
 
     private static final Map<String, String> SECTION_DISPLAY_NAMES = Map.of(
@@ -50,6 +66,7 @@ public class RuleBasedDiffSummaryTransformer implements DiffSummaryTransformer {
         );
     }
 
+    /** Converts a single diff operation into a human-readable change with assessed impact. */
     private HumanReadableChange transformOperation(DiffOperation op) {
         ChangeType type = ChangeType.fromDiffOp(op.op());
         String description = generateDescription(op);
@@ -58,6 +75,7 @@ public class RuleBasedDiffSummaryTransformer implements DiffSummaryTransformer {
         return new HumanReadableChange(type, description, impact);
     }
 
+    /** Generates a description by dispatching to add/replace/remove-specific formatters. */
     private String generateDescription(DiffOperation op) {
         return switch (op.op()) {
             case "add" -> describeAdd(op);
@@ -107,6 +125,10 @@ public class RuleBasedDiffSummaryTransformer implements DiffSummaryTransformer {
         return "Removed %s".formatted(fieldName);
     }
 
+    /**
+     * Assesses business impact of a change using a priority-ordered rule chain.
+     * Rules are evaluated top-down; the first match wins.
+     */
     private Impact assessImpact(DiffOperation op) {
         // New required fields are high impact
         if ("add".equals(op.op()) && isRequired(op.value())) {

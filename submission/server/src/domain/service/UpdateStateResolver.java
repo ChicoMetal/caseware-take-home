@@ -9,6 +9,11 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Domain service that resolves engagement update state without loading full engagement files.
+ * Compares the indexed engagement version against the latest published template version
+ * and produces both list-level summaries and detailed change breakdowns.
+ */
 public class UpdateStateResolver {
 
     private final TemplateDiffProvider diffProvider;
@@ -23,6 +28,15 @@ public class UpdateStateResolver {
         this.templateProvider = templateProvider;
     }
 
+    /**
+     * Determines the update status for an engagement by comparing its version to the latest
+     * template version. Decline logic: if {@code declinedVersion >= latest}, status is DECLINED;
+     * if a newer version has since been published, the decline is superseded and status is PENDING.
+     *
+     * @param engagement      the lightweight index entry for the engagement
+     * @param declinedVersion the version the user previously declined, or {@code null} if none
+     * @return list-level summary including status, pending count, and declined version tracking
+     */
     public EngagementUpdateSummary resolveUpdateState(EngagementRecord engagement,
                                                       Integer declinedVersion) {
         TemplateVersion latest = templateProvider.getLatestVersion(engagement.templateId());
@@ -76,6 +90,14 @@ public class UpdateStateResolver {
         );
     }
 
+    /**
+     * Computes detailed change information for an engagement's pending update.
+     * Produces two views: a collapsed summary (single diff from current to latest) and
+     * step-by-step summaries (one diff per consecutive version increment).
+     *
+     * @param engagement the lightweight index entry for the engagement
+     * @return detail-level response with both summary views and freshness metadata
+     */
     public EngagementUpdateDetails resolveUpdateDetails(EngagementRecord engagement) {
         TemplateVersion latest = templateProvider.getLatestVersion(engagement.templateId());
         int currentVersion = engagement.templateVersion();

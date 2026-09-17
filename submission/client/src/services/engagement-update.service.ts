@@ -8,7 +8,7 @@ import {
   DecisionType,
 } from '../models/engagement-update.models';
 
-// Fixture data built from the provided sample files
+/** Fixture data built from the provided sample files, simulating the REST API responses. */
 
 const FIXTURE_DETAILS: Record<string, EngagementUpdateDetails> = {
   'ENG-1002': {
@@ -265,19 +265,42 @@ const FIXTURE_ENGAGEMENTS: EngagementUpdateSummary[] = [
   { engagementId: 'ENG-1012', engagementName: 'Prairie Star Investments 2026', templateId: 'RISK-CA', templateDisplayName: 'Canadian Risk Assessment', currentVersion: 12, latestVersion: 12, status: UpdateStatus.UP_TO_DATE, pendingUpdateCount: 0, summaryAvailable: false, lastCheckedAt: '2026-09-16T12:00:00Z', declinedVersion: null },
 ];
 
+/**
+ * State management service for engagement template updates.
+ *
+ * Owns the reactive state (via Angular Signals) for the engagement list and
+ * the currently selected detail view. Currently backed by in-memory fixture
+ * data; in production this would delegate to the REST API defined in DESIGN.md.
+ */
 @Injectable({ providedIn: 'root' })
 export class EngagementUpdateService {
+  /** Reactive list of all engagement summaries for the current firm. */
   readonly engagements = signal<EngagementUpdateSummary[]>(FIXTURE_ENGAGEMENTS);
+
+  /** Currently selected engagement's update details, or null when no selection is active. */
   readonly selectedDetails = signal<EngagementUpdateDetails | null>(null);
+
+  /** Looks up detail data for the given engagement and sets it as the active selection. */
   selectEngagement(engagementId: string): void {
     const details = FIXTURE_DETAILS[engagementId] ?? null;
     this.selectedDetails.set(details);
   }
 
+  /** Resets the detail panel by clearing the active selection. */
   clearSelection(): void {
     this.selectedDetails.set(null);
   }
 
+  /**
+   * Records a user's decision on a pending template update.
+   *
+   * - APPLY: promotes the engagement to the latest template version, clears
+   *   pending state and any prior decline.
+   * - DECLINE: marks the engagement as declined and records the declined version
+   *   (so the UI can distinguish "seen and rejected" from "never reviewed").
+   *
+   * Clears the detail selection after either decision path.
+   */
   submitDecision(engagementId: string, decision: DecisionType): void {
     if (decision === DecisionType.APPLY) {
       this.engagements.update((engagements) =>

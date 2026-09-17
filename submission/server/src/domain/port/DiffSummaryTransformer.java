@@ -9,5 +9,9 @@ import domain.model.TemplateDiff;
  */
 public interface DiffSummaryTransformer {
 
+    /**
+     * @param diff raw diff between two template versions
+     * @return human-readable summary grouped by template section
+     */
     ChangeSummary transform(TemplateDiff diff);
 }
