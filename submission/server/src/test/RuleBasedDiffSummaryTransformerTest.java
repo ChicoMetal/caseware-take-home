@@ -19,6 +19,14 @@ public class RuleBasedDiffSummaryTransformerTest {
     public static void main(String[] args) {
         testTransformsAllThreeOperationTypes();
         testGroupsChangesBySection();
+        testAddWithoutLabel();
+        testReplaceWithShortStrings();
+        testReplaceWithLongStrings();
+        testRemoveWithoutLabel();
+        testUnknownSectionFallsBackToCapitalized();
+        testEmptyDiffProducesEmptySummary();
+        testAddOptionalQuestionIsMediumImpact();
+        testLabelReplaceIsLowImpact();
 
         System.out.println("All RuleBasedDiffSummaryTransformer tests passed.");
     }
@@ -121,6 +129,158 @@ public class RuleBasedDiffSummaryTransformerTest {
         assertEqual(1, materialitySection.changes().size(), "materiality changes count");
 
         System.out.println("  ✓ testGroupsChangesBySection");
+    }
+
+    /**
+     * ADD a simple field (no label property) → "Added [readable field name]", MEDIUM impact.
+     */
+    static void testAddWithoutLabel() {
+        var diff = new TemplateDiff("AUDIT-CA", 4, 5, NOW, List.of(
+            new DiffOperation("add", "/sections/planning/guidance/newFieldName",
+                "some value", null, null)
+        ));
+        var transformer = new RuleBasedDiffSummaryTransformer();
+        ChangeSummary summary = transformer.transform(diff);
+
+        var change = summary.sections().get(0).changes().get(0);
+        assertEqual(ChangeType.ADDED, change.type(), "type");
+        assert change.description().contains("Added") : "Should say 'Added': " + change.description();
+        assert change.description().contains("New field name") : "Should contain readable field name: " + change.description();
+        assertEqual(Impact.MEDIUM, change.impact(), "impact for optional add");
+
+        System.out.println("  ✓ testAddWithoutLabel");
+    }
+
+    /**
+     * REPLACE with short strings → shows both old and new values in quotes.
+     */
+    static void testReplaceWithShortStrings() {
+        var diff = new TemplateDiff("AUDIT-CA", 4, 5, NOW, List.of(
+            new DiffOperation("replace", "/sections/planning/questions/3/label",
+                null, "Old question text", "New question text")
+        ));
+        var transformer = new RuleBasedDiffSummaryTransformer();
+        ChangeSummary summary = transformer.transform(diff);
+
+        var change = summary.sections().get(0).changes().get(0);
+        assertEqual(ChangeType.MODIFIED, change.type(), "type");
+        assert change.description().contains("Old question text") : "Should contain old value: " + change.description();
+        assert change.description().contains("New question text") : "Should contain new value: " + change.description();
+        assert change.description().contains("'") : "Short strings should be quoted: " + change.description();
+
+        System.out.println("  ✓ testReplaceWithShortStrings");
+    }
+
+    /**
+     * REPLACE with long strings (>80 chars) → falls back to "[field] text updated".
+     */
+    static void testReplaceWithLongStrings() {
+        String longOld = "A".repeat(100);
+        String longNew = "B".repeat(100);
+        var diff = new TemplateDiff("AUDIT-CA", 4, 5, NOW, List.of(
+            new DiffOperation("replace", "/sections/planning/questions/3/label",
+                null, longOld, longNew)
+        ));
+        var transformer = new RuleBasedDiffSummaryTransformer();
+        ChangeSummary summary = transformer.transform(diff);
+
+        var change = summary.sections().get(0).changes().get(0);
+        assertEqual(ChangeType.MODIFIED, change.type(), "type");
+        assert change.description().contains("text updated") : "Long strings should fallback: " + change.description();
+        assert !change.description().contains(longOld) : "Should NOT contain the full old string";
+
+        System.out.println("  ✓ testReplaceWithLongStrings");
+    }
+
+    /**
+     * REMOVE a simple field (no label) → "Removed [readable field name]".
+     */
+    static void testRemoveWithoutLabel() {
+        var diff = new TemplateDiff("AUDIT-CA", 4, 5, NOW, List.of(
+            new DiffOperation("remove", "/sections/completion/guidance/obsoleteFlag",
+                null, "true", null)
+        ));
+        var transformer = new RuleBasedDiffSummaryTransformer();
+        ChangeSummary summary = transformer.transform(diff);
+
+        var change = summary.sections().get(0).changes().get(0);
+        assertEqual(ChangeType.REMOVED, change.type(), "type");
+        assert change.description().contains("Removed") : "Should say 'Removed': " + change.description();
+        assert change.description().contains("Obsolete flag") : "Should contain readable name: " + change.description();
+        assertEqual(Impact.MEDIUM, change.impact(), "impact for remove");
+
+        System.out.println("  ✓ testRemoveWithoutLabel");
+    }
+
+    /**
+     * Unknown section key → display name is capitalized fallback.
+     */
+    static void testUnknownSectionFallsBackToCapitalized() {
+        var diff = new TemplateDiff("AUDIT-CA", 4, 5, NOW, List.of(
+            new DiffOperation("add", "/sections/customNewSection/items/1",
+                Map.of("label", "Test item", "required", false),
+                null, null)
+        ));
+        var transformer = new RuleBasedDiffSummaryTransformer();
+        ChangeSummary summary = transformer.transform(diff);
+
+        assertEqual(1, summary.sections().size(), "section count");
+        assertEqual("customNewSection", summary.sections().get(0).sectionPath(), "sectionPath");
+        assertEqual("CustomNewSection", summary.sections().get(0).sectionDisplayName(), "display name fallback");
+
+        System.out.println("  ✓ testUnknownSectionFallsBackToCapitalized");
+    }
+
+    /**
+     * Empty diff → zero sections, zero total changes.
+     */
+    static void testEmptyDiffProducesEmptySummary() {
+        var diff = new TemplateDiff("AUDIT-CA", 4, 5, NOW, List.of());
+        var transformer = new RuleBasedDiffSummaryTransformer();
+        ChangeSummary summary = transformer.transform(diff);
+
+        assertEqual(0, summary.sections().size(), "sections");
+        assertEqual(0, summary.totalChanges(), "totalChanges");
+        assertEqual(4, summary.fromVersion(), "fromVersion");
+        assertEqual(5, summary.toVersion(), "toVersion");
+
+        System.out.println("  ✓ testEmptyDiffProducesEmptySummary");
+    }
+
+    /**
+     * ADD optional question → MEDIUM impact (not HIGH, because required=false).
+     */
+    static void testAddOptionalQuestionIsMediumImpact() {
+        var diff = new TemplateDiff("AUDIT-CA", 4, 5, NOW, List.of(
+            new DiffOperation("add", "/sections/planning/questions/9",
+                Map.of("id", "Q-PLN-009", "label", "Optional question?", "required", false),
+                null, null)
+        ));
+        var transformer = new RuleBasedDiffSummaryTransformer();
+        ChangeSummary summary = transformer.transform(diff);
+
+        var change = summary.sections().get(0).changes().get(0);
+        assertEqual(Impact.MEDIUM, change.impact(), "optional add should be MEDIUM");
+        assert !change.description().contains("required") : "Should NOT mention required: " + change.description();
+
+        System.out.println("  ✓ testAddOptionalQuestionIsMediumImpact");
+    }
+
+    /**
+     * REPLACE on a label path → LOW impact.
+     */
+    static void testLabelReplaceIsLowImpact() {
+        var diff = new TemplateDiff("AUDIT-CA", 4, 5, NOW, List.of(
+            new DiffOperation("replace", "/sections/planning/questions/3/label",
+                null, "Old text", "New text")
+        ));
+        var transformer = new RuleBasedDiffSummaryTransformer();
+        ChangeSummary summary = transformer.transform(diff);
+
+        var change = summary.sections().get(0).changes().get(0);
+        assertEqual(Impact.LOW, change.impact(), "label replace should be LOW");
+
+        System.out.println("  ✓ testLabelReplaceIsLowImpact");
     }
 
     // --- Helpers ---
