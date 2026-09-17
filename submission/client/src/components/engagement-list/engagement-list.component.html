@@ -1,0 +1,45 @@
+<h1>Engagement Template Updates</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>Engagement</th>
+      <th>Template</th>
+      <th>Version</th>
+      <th>Status</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (engagement of engagements(); track engagement.engagementId) {
+      <tr>
+        <td>{{ engagement.engagementName }}</td>
+        <td>{{ engagement.templateDisplayName }}</td>
+        <td>v{{ engagement.currentVersion }} / v{{ engagement.latestVersion }}</td>
+        <td>
+          {{ statusLabel(engagement.status) }}
+          @if (engagement.pendingUpdateCount > 0) {
+            ({{ engagement.pendingUpdateCount }} pending)
+          }
+        </td>
+        <td>
+          @if (engagement.status === 'PENDING' && engagement.summaryAvailable) {
+            <button (click)="selectEngagement(engagement.engagementId)">
+              Review Changes
+            </button>
+          }
+          @if (engagement.status === 'COMPUTING') {
+            <span>Calculating...</span>
+          }
+        </td>
+      </tr>
+    }
+  </tbody>
+</table>
+
+@if (selectedDetails(); as details) {
+  <app-update-detail
+    [details]="details"
+    (apply)="onApply(details.engagementId)"
+  />
+}

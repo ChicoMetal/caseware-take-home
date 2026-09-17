@@ -1,0 +1,158 @@
+package adapter;
+
+import domain.model.*;
+import domain.port.DiffSummaryTransformer;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class RuleBasedDiffSummaryTransformer implements DiffSummaryTransformer {
+
+    private static final Map<String, String> SECTION_DISPLAY_NAMES = Map.of(
+        "planning", "Planning",
+        "materiality", "Materiality",
+        "completion", "Completion",
+        "inquiries", "Inquiries",
+        "analytics", "Analytics",
+        "riskAssessment", "Risk Assessment",
+        "documentation", "Documentation",
+        "monitoring", "Monitoring"
+    );
+
+    @Override
+    public ChangeSummary transform(TemplateDiff diff) {
+        Map<String, List<HumanReadableChange>> changesBySection = new LinkedHashMap<>();
+
+        for (DiffOperation op : diff.changes()) {
+            String sectionKey = op.sectionKey();
+            HumanReadableChange change = transformOperation(op);
+            changesBySection
+                .computeIfAbsent(sectionKey, k -> new ArrayList<>())
+                .add(change);
+        }
+
+        List<SectionChange> sections = changesBySection.entrySet().stream()
+            .map(entry -> new SectionChange(
+                entry.getKey(),
+                resolveSectionName(entry.getKey()),
+                entry.getValue()
+            ))
+            .collect(Collectors.toList());
+
+        int totalChanges = diff.changes().size();
+
+        return new ChangeSummary(
+            diff.fromVersion(),
+            diff.toVersion(),
+            diff.generatedAt(),
+            sections,
+            totalChanges
+        );
+    }
+
+    private HumanReadableChange transformOperation(DiffOperation op) {
+        ChangeType type = ChangeType.fromDiffOp(op.op());
+        String description = generateDescription(op);
+        Impact impact = assessImpact(op);
+
+        return new HumanReadableChange(type, description, impact);
+    }
+
+    private String generateDescription(DiffOperation op) {
+        return switch (op.op()) {
+            case "add" -> describeAdd(op);
+            case "replace" -> describeReplace(op);
+            case "remove" -> describeRemove(op);
+            default -> "Unknown change at " + op.path();
+        };
+    }
+
+    private String describeAdd(DiffOperation op) {
+        Object value = op.value();
+        if (op.hasLabel(value)) {
+            String label = op.extractLabel(value);
+            String requiredSuffix = op.isRequired(value) ? " (required)" : "";
+            String elementType = inferElementType(op.fieldPath());
+            return "New %s: '%s'%s".formatted(elementType, label, requiredSuffix);
+        }
+        String fieldName = readableFieldName(op.fieldPath());
+        return "Added %s".formatted(fieldName);
+    }
+
+    private String describeReplace(DiffOperation op) {
+        Object oldVal = op.oldValue();
+        Object newVal = op.newValue();
+        String fieldName = readableFieldName(op.fieldPath());
+
+        if (oldVal instanceof Number && newVal instanceof Number) {
+            return "%s changed from %s to %s".formatted(fieldName, oldVal, newVal);
+        }
+        if (oldVal instanceof String oldStr && newVal instanceof String newStr) {
+            if (oldStr.length() <= 80 && newStr.length() <= 80) {
+                return "%s updated from '%s' to '%s'".formatted(fieldName, oldStr, newStr);
+            }
+            return "%s text updated".formatted(fieldName);
+        }
+        return "%s updated".formatted(fieldName);
+    }
+
+    private String describeRemove(DiffOperation op) {
+        Object oldValue = op.oldValue();
+        if (op.hasLabel(oldValue)) {
+            String label = op.extractLabel(oldValue);
+            String elementType = inferElementType(op.fieldPath());
+            return "Removed %s: '%s'".formatted(elementType, label);
+        }
+        String fieldName = readableFieldName(op.fieldPath());
+        return "Removed %s".formatted(fieldName);
+    }
+
+    private Impact assessImpact(DiffOperation op) {
+        // New required fields are high impact
+        if ("add".equals(op.op()) && op.isRequired(op.value())) {
+            return Impact.HIGH;
+        }
+        // Threshold/scoring changes are high impact
+        String path = op.path().toLowerCase();
+        if (path.contains("threshold") || path.contains("scoring")) {
+            return Impact.HIGH;
+        }
+        // Removals are medium impact
+        if ("remove".equals(op.op())) {
+            return Impact.MEDIUM;
+        }
+        // New checklists or questions are medium impact
+        if ("add".equals(op.op())) {
+            return Impact.MEDIUM;
+        }
+        // Label/text changes are low impact
+        if ("replace".equals(op.op()) && path.contains("label")) {
+            return Impact.LOW;
+        }
+        return Impact.LOW;
+    }
+
+    private String resolveSectionName(String sectionKey) {
+        return SECTION_DISPLAY_NAMES.getOrDefault(sectionKey, capitalize(sectionKey));
+    }
+
+    private String inferElementType(String fieldPath) {
+        if (fieldPath.contains("questions")) return "question";
+        if (fieldPath.contains("checklists")) return "checklist";
+        if (fieldPath.contains("procedures")) return "procedure";
+        return "item";
+    }
+
+    private String readableFieldName(String fieldPath) {
+        String[] parts = fieldPath.split("/");
+        String lastPart = parts[parts.length - 1];
+        // Convert camelCase to readable: "thresholdPercent" → "Threshold percent"
+        String readable = lastPart.replaceAll("([a-z])([A-Z])", "$1 $2").toLowerCase();
+        return capitalize(readable);
+    }
+
+    private String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        return Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
+}
