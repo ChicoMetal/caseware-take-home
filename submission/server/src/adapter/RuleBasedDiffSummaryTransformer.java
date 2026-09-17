@@ -69,9 +69,9 @@ public class RuleBasedDiffSummaryTransformer implements DiffSummaryTransformer {
 
     private String describeAdd(DiffOperation op) {
         Object value = op.value();
-        if (op.hasLabel(value)) {
-            String label = op.extractLabel(value);
-            String requiredSuffix = op.isRequired(value) ? " (required)" : "";
+        if (hasLabel(value)) {
+            String label = extractLabel(value);
+            String requiredSuffix = isRequired(value) ? " (required)" : "";
             String elementType = inferElementType(op.fieldPath());
             return "New %s: '%s'%s".formatted(elementType, label, requiredSuffix);
         }
@@ -98,8 +98,8 @@ public class RuleBasedDiffSummaryTransformer implements DiffSummaryTransformer {
 
     private String describeRemove(DiffOperation op) {
         Object oldValue = op.oldValue();
-        if (op.hasLabel(oldValue)) {
-            String label = op.extractLabel(oldValue);
+        if (hasLabel(oldValue)) {
+            String label = extractLabel(oldValue);
             String elementType = inferElementType(op.fieldPath());
             return "Removed %s: '%s'".formatted(elementType, label);
         }
@@ -109,7 +109,7 @@ public class RuleBasedDiffSummaryTransformer implements DiffSummaryTransformer {
 
     private Impact assessImpact(DiffOperation op) {
         // New required fields are high impact
-        if ("add".equals(op.op()) && op.isRequired(op.value())) {
+        if ("add".equals(op.op()) && isRequired(op.value())) {
             return Impact.HIGH;
         }
         // Threshold/scoring changes are high impact
@@ -130,6 +130,22 @@ public class RuleBasedDiffSummaryTransformer implements DiffSummaryTransformer {
             return Impact.LOW;
         }
         return Impact.LOW;
+    }
+
+    private static boolean hasLabel(Object obj) {
+        return obj instanceof Map<?, ?> map && map.containsKey("label");
+    }
+
+    private static String extractLabel(Object obj) {
+        if (obj instanceof Map<?, ?> map && map.get("label") instanceof String label) {
+            return label;
+        }
+        return null;
+    }
+
+    private static boolean isRequired(Object obj) {
+        return obj instanceof Map<?, ?> map
+            && Boolean.TRUE.equals(map.get("required"));
     }
 
     private String resolveSectionName(String sectionKey) {

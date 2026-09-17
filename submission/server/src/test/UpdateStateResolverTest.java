@@ -36,7 +36,7 @@ public class UpdateStateResolverTest {
      * Engagement at v5, latest is v5 → UP_TO_DATE, no diffs invoked.
      */
     static void testEngagementUpToDate() {
-        var engagement = new EngagementRecord("ENG-1001", "Northstar Manufacturing 2026", "AUDIT-CA", 5);
+        var engagement = new EngagementRecord("ENG-1001", "FIRM-001", "Northstar Manufacturing 2026", "AUDIT-CA", 5);
         var latestVersion = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
 
         // Diff provider should never be called for up-to-date engagements
@@ -65,7 +65,7 @@ public class UpdateStateResolverTest {
      * resolveUpdateDetails produces 1 collapsed summary and 1 step-by-step entry.
      */
     static void testEngagementOneVersionBehind() {
-        var engagement = new EngagementRecord("ENG-1002", "Maple Ridge Foods 2026", "AUDIT-CA", 4);
+        var engagement = new EngagementRecord("ENG-1002", "FIRM-001", "Maple Ridge Foods 2026", "AUDIT-CA", 4);
         var latestVersion = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
         var v5 = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
 
@@ -106,7 +106,7 @@ public class UpdateStateResolverTest {
      * resolveUpdateDetails produces 1 collapsed summary (v3→v5) and 2 step-by-step entries.
      */
     static void testEngagementTwoVersionsBehind() {
-        var engagement = new EngagementRecord("ENG-1003", "Harbourview Logistics 2026", "AUDIT-CA", 3);
+        var engagement = new EngagementRecord("ENG-1003", "FIRM-001", "Harbourview Logistics 2026", "AUDIT-CA", 3);
         var latestVersion = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
         var v4 = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 4, Instant.parse("2026-07-07T13:00:00Z"));
         var v5 = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
@@ -153,7 +153,7 @@ public class UpdateStateResolverTest {
      * Engagement at v4, latest v5, declined v5 → DECLINED.
      */
     static void testDeclinedEngagementStaysDeclined() {
-        var engagement = new EngagementRecord("ENG-2001", "Declined Corp 2026", "AUDIT-CA", 4);
+        var engagement = new EngagementRecord("ENG-2001", "FIRM-001", "Declined Corp 2026", "AUDIT-CA", 4);
         var latestVersion = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
 
         TemplateDiffProvider diffProvider = (templateId, from, to) -> {
@@ -179,7 +179,7 @@ public class UpdateStateResolverTest {
      * Engagement at v4, declined v5, but new v6 published → back to PENDING.
      */
     static void testDeclinedEngagementReturnsToPendingOnNewVersion() {
-        var engagement = new EngagementRecord("ENG-2002", "Re-pending Corp 2026", "AUDIT-CA", 4);
+        var engagement = new EngagementRecord("ENG-2002", "FIRM-001", "Re-pending Corp 2026", "AUDIT-CA", 4);
         var latestVersion = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 6, NOW);
 
         TemplateDiffProvider diffProvider = (templateId, from, to) -> {
