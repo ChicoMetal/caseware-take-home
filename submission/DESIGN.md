@@ -35,10 +35,11 @@ interface EngagementUpdateSummary {
   templateDisplayName: string;
   currentVersion: number;
   latestVersion: number;
-  status: 'UP_TO_DATE' | 'PENDING' | 'COMPUTING' | 'ERROR';
+  status: 'UP_TO_DATE' | 'PENDING' | 'COMPUTING' | 'DECLINED' | 'ERROR';
   pendingUpdateCount: number;
   summaryAvailable: boolean;
   lastCheckedAt: string; // ISO-8601
+  declinedVersion: number | null;
 }
 
 // GET /api/engagements/{engagementId}/update-details
@@ -89,7 +90,7 @@ interface UpdateDecisionResponse {
 }
 ```
 
-**Freshness and unavailable data:** The `status` field distinguishes between `PENDING` (summary ready) and `COMPUTING` (summary being generated). The `summaryAvailable` flag allows the client to show a loading state for change details while still indicating that an update exists. `lastCheckedAt` communicates data freshness.
+**Freshness and unavailable data:** The `status` field distinguishes between `PENDING` (summary ready), `COMPUTING` (summary being generated), and `DECLINED` (user declined the current latest version). The `summaryAvailable` flag allows the client to show a loading state for change details while still indicating that an update exists. `lastCheckedAt` communicates data freshness. When `status` is `DECLINED`, `declinedVersion` records which version was declined; if a newer version is published, the engagement returns to `PENDING`.
 
 ### Human-Readable Change Summary
 

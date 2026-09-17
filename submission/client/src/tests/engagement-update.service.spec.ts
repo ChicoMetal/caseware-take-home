@@ -31,4 +31,22 @@ describe('EngagementUpdateService', () => {
 
     expect(service.selectedDetails()).toBeNull();
   });
+
+  it('should transition engagement from PENDING to DECLINED on DECLINE', () => {
+    const before = service.engagements().find(
+      (e) => e.engagementId === 'ENG-1002'
+    );
+    expect(before!.status).toBe(UpdateStatus.PENDING);
+
+    service.submitDecision('ENG-1002', DecisionType.DECLINE);
+
+    const after = service.engagements().find(
+      (e) => e.engagementId === 'ENG-1002'
+    );
+    expect(after!.status).toBe(UpdateStatus.DECLINED);
+    expect(after!.declinedVersion).toBe(5);
+    expect(after!.currentVersion).toBe(4);
+
+    expect(service.selectedDetails()).toBeNull();
+  });
 });

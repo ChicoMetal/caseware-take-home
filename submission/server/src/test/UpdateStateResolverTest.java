@@ -26,6 +26,8 @@ public class UpdateStateResolverTest {
         testEngagementUpToDate();
         testEngagementOneVersionBehind();
         testEngagementTwoVersionsBehind();
+        testDeclinedEngagementStaysDeclined();
+        testDeclinedEngagementReturnsToPendingOnNewVersion();
 
         System.out.println("All UpdateStateResolver tests passed.");
     }
@@ -47,7 +49,7 @@ public class UpdateStateResolverTest {
         TemplateVersionProvider templateProvider = stubTemplateProvider(latestVersion, emptyList());
 
         var resolver = new UpdateStateResolver(diffProvider, transformer, templateProvider);
-        EngagementUpdateSummary result = resolver.resolveUpdateState(engagement);
+        EngagementUpdateSummary result = resolver.resolveUpdateState(engagement, null);
 
         assertEqual(UpdateStatus.UP_TO_DATE, result.status(), "status");
         assertEqual(0, result.pendingUpdateCount(), "pendingUpdateCount");
@@ -70,8 +72,6 @@ public class UpdateStateResolverTest {
         var collapsedDiff = new TemplateDiff("AUDIT-CA", 4, 5, NOW, List.of(
             new DiffOperation("replace", "/sections/materiality/guidance/thresholdPercent", null, 4.5, 4.0)
         ));
-        var stepDiff = collapsedDiff; // same for single-step case
-
         TemplateDiffProvider diffProvider = (templateId, from, to) -> {
             if (from == 4 && to == 5) return collapsedDiff;
             throw new AssertionError("Unexpected diff request: " + from + " → " + to);
@@ -84,7 +84,7 @@ public class UpdateStateResolverTest {
         var resolver = new UpdateStateResolver(diffProvider, transformer, templateProvider);
 
         // Test state resolution
-        EngagementUpdateSummary state = resolver.resolveUpdateState(engagement);
+        EngagementUpdateSummary state = resolver.resolveUpdateState(engagement, null);
         assertEqual(UpdateStatus.PENDING, state.status(), "status");
         assertEqual(1, state.pendingUpdateCount(), "pendingUpdateCount");
 
@@ -117,7 +117,6 @@ public class UpdateStateResolverTest {
             )
         );
 
-        var stubSummary = new ChangeSummary(0, 0, NOW, List.of(), 1);
         DiffSummaryTransformer transformer = (diff) -> new ChangeSummary(
             diff.fromVersion(), diff.toVersion(), diff.generatedAt(), List.of(), diff.changes().size()
         );
@@ -126,7 +125,7 @@ public class UpdateStateResolverTest {
         var resolver = new UpdateStateResolver(diffProvider, transformer, templateProvider);
 
         // Test state resolution
-        EngagementUpdateSummary state = resolver.resolveUpdateState(engagement);
+        EngagementUpdateSummary state = resolver.resolveUpdateState(engagement, null);
         assertEqual(UpdateStatus.PENDING, state.status(), "status");
         assertEqual(2, state.pendingUpdateCount(), "pendingUpdateCount");
 
@@ -148,6 +147,57 @@ public class UpdateStateResolverTest {
         assertNotNull(details.freshness(), "freshness");
 
         System.out.println("  ✓ testEngagementTwoVersionsBehind");
+    }
+
+    /**
+     * Engagement at v4, latest v5, declined v5 → DECLINED.
+     */
+    static void testDeclinedEngagementStaysDeclined() {
+        var engagement = new EngagementRecord("ENG-2001", "Declined Corp 2026", "AUDIT-CA", 4);
+        var latestVersion = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
+
+        TemplateDiffProvider diffProvider = (templateId, from, to) -> {
+            throw new AssertionError("Diff provider should not be called for state resolution");
+        };
+        DiffSummaryTransformer transformer = (diff) -> {
+            throw new AssertionError("Transformer should not be called for state resolution");
+        };
+        TemplateVersionProvider templateProvider = stubTemplateProvider(latestVersion, emptyList());
+
+        var resolver = new UpdateStateResolver(diffProvider, transformer, templateProvider);
+        EngagementUpdateSummary result = resolver.resolveUpdateState(engagement, 5);
+
+        assertEqual(UpdateStatus.DECLINED, result.status(), "status");
+        assertEqual(1, result.pendingUpdateCount(), "pendingUpdateCount");
+        assertEqual(true, result.summaryAvailable(), "summaryAvailable");
+        assertEqual(5, result.declinedVersion(), "declinedVersion");
+
+        System.out.println("  ✓ testDeclinedEngagementStaysDeclined");
+    }
+
+    /**
+     * Engagement at v4, declined v5, but new v6 published → back to PENDING.
+     */
+    static void testDeclinedEngagementReturnsToPendingOnNewVersion() {
+        var engagement = new EngagementRecord("ENG-2002", "Re-pending Corp 2026", "AUDIT-CA", 4);
+        var latestVersion = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 6, NOW);
+
+        TemplateDiffProvider diffProvider = (templateId, from, to) -> {
+            throw new AssertionError("Diff provider should not be called for state resolution");
+        };
+        DiffSummaryTransformer transformer = (diff) -> {
+            throw new AssertionError("Transformer should not be called for state resolution");
+        };
+        TemplateVersionProvider templateProvider = stubTemplateProvider(latestVersion, emptyList());
+
+        var resolver = new UpdateStateResolver(diffProvider, transformer, templateProvider);
+        EngagementUpdateSummary result = resolver.resolveUpdateState(engagement, 5);
+
+        assertEqual(UpdateStatus.PENDING, result.status(), "status");
+        assertEqual(2, result.pendingUpdateCount(), "pendingUpdateCount");
+        assertEqual(5, result.declinedVersion(), "declinedVersion");
+
+        System.out.println("  ✓ testDeclinedEngagementReturnsToPendingOnNewVersion");
     }
 
     // --- Helpers ---

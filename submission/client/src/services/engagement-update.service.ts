@@ -251,18 +251,18 @@ const FIXTURE_DETAILS: Record<string, EngagementUpdateDetails> = {
 };
 
 const FIXTURE_ENGAGEMENTS: EngagementUpdateSummary[] = [
-  { engagementId: 'ENG-1001', engagementName: 'Northstar Manufacturing 2026', templateId: 'AUDIT-CA', templateDisplayName: 'Canadian Audit Engagement', currentVersion: 5, latestVersion: 5, status: UpdateStatus.UP_TO_DATE, pendingUpdateCount: 0, summaryAvailable: false, lastCheckedAt: '2026-09-16T12:00:00Z' },
-  { engagementId: 'ENG-1002', engagementName: 'Maple Ridge Foods 2026', templateId: 'AUDIT-CA', templateDisplayName: 'Canadian Audit Engagement', currentVersion: 4, latestVersion: 5, status: UpdateStatus.PENDING, pendingUpdateCount: 1, summaryAvailable: true, lastCheckedAt: '2026-09-16T12:00:00Z' },
-  { engagementId: 'ENG-1003', engagementName: 'Harbourview Logistics 2026', templateId: 'AUDIT-CA', templateDisplayName: 'Canadian Audit Engagement', currentVersion: 3, latestVersion: 5, status: UpdateStatus.PENDING, pendingUpdateCount: 2, summaryAvailable: true, lastCheckedAt: '2026-09-16T12:00:00Z' },
-  { engagementId: 'ENG-1004', engagementName: 'Pinecrest Holdings 2026', templateId: 'AUDIT-CA', templateDisplayName: 'Canadian Audit Engagement', currentVersion: 5, latestVersion: 5, status: UpdateStatus.UP_TO_DATE, pendingUpdateCount: 0, summaryAvailable: false, lastCheckedAt: '2026-09-16T12:00:00Z' },
-  { engagementId: 'ENG-1005', engagementName: 'Cedar Peak Services 2026', templateId: 'REVIEW-CA', templateDisplayName: 'Canadian Review Engagement', currentVersion: 8, latestVersion: 8, status: UpdateStatus.UP_TO_DATE, pendingUpdateCount: 0, summaryAvailable: false, lastCheckedAt: '2026-09-16T12:00:00Z' },
-  { engagementId: 'ENG-1006', engagementName: 'Westmount Consulting 2026', templateId: 'REVIEW-CA', templateDisplayName: 'Canadian Review Engagement', currentVersion: 7, latestVersion: 8, status: UpdateStatus.PENDING, pendingUpdateCount: 1, summaryAvailable: true, lastCheckedAt: '2026-09-16T12:00:00Z' },
-  { engagementId: 'ENG-1007', engagementName: 'Bluewater Hospitality 2026', templateId: 'REVIEW-CA', templateDisplayName: 'Canadian Review Engagement', currentVersion: 6, latestVersion: 8, status: UpdateStatus.PENDING, pendingUpdateCount: 2, summaryAvailable: true, lastCheckedAt: '2026-09-16T12:00:00Z' },
-  { engagementId: 'ENG-1008', engagementName: 'Summit Property Group 2026', templateId: 'REVIEW-CA', templateDisplayName: 'Canadian Review Engagement', currentVersion: 8, latestVersion: 8, status: UpdateStatus.UP_TO_DATE, pendingUpdateCount: 0, summaryAvailable: false, lastCheckedAt: '2026-09-16T12:00:00Z' },
-  { engagementId: 'ENG-1009', engagementName: 'Northern Grid Energy 2026', templateId: 'RISK-CA', templateDisplayName: 'Canadian Risk Assessment', currentVersion: 12, latestVersion: 12, status: UpdateStatus.UP_TO_DATE, pendingUpdateCount: 0, summaryAvailable: false, lastCheckedAt: '2026-09-16T12:00:00Z' },
-  { engagementId: 'ENG-1010', engagementName: 'Greenfield Health Services 2026', templateId: 'RISK-CA', templateDisplayName: 'Canadian Risk Assessment', currentVersion: 11, latestVersion: 12, status: UpdateStatus.PENDING, pendingUpdateCount: 1, summaryAvailable: true, lastCheckedAt: '2026-09-16T12:00:00Z' },
-  { engagementId: 'ENG-1011', engagementName: 'Stonebridge Construction 2026', templateId: 'RISK-CA', templateDisplayName: 'Canadian Risk Assessment', currentVersion: 10, latestVersion: 12, status: UpdateStatus.PENDING, pendingUpdateCount: 2, summaryAvailable: true, lastCheckedAt: '2026-09-16T12:00:00Z' },
-  { engagementId: 'ENG-1012', engagementName: 'Prairie Star Investments 2026', templateId: 'RISK-CA', templateDisplayName: 'Canadian Risk Assessment', currentVersion: 12, latestVersion: 12, status: UpdateStatus.UP_TO_DATE, pendingUpdateCount: 0, summaryAvailable: false, lastCheckedAt: '2026-09-16T12:00:00Z' },
+  { engagementId: 'ENG-1001', engagementName: 'Northstar Manufacturing 2026', templateId: 'AUDIT-CA', templateDisplayName: 'Canadian Audit Engagement', currentVersion: 5, latestVersion: 5, status: UpdateStatus.UP_TO_DATE, pendingUpdateCount: 0, summaryAvailable: false, lastCheckedAt: '2026-09-16T12:00:00Z', declinedVersion: null },
+  { engagementId: 'ENG-1002', engagementName: 'Maple Ridge Foods 2026', templateId: 'AUDIT-CA', templateDisplayName: 'Canadian Audit Engagement', currentVersion: 4, latestVersion: 5, status: UpdateStatus.PENDING, pendingUpdateCount: 1, summaryAvailable: true, lastCheckedAt: '2026-09-16T12:00:00Z', declinedVersion: null },
+  { engagementId: 'ENG-1003', engagementName: 'Harbourview Logistics 2026', templateId: 'AUDIT-CA', templateDisplayName: 'Canadian Audit Engagement', currentVersion: 3, latestVersion: 5, status: UpdateStatus.PENDING, pendingUpdateCount: 2, summaryAvailable: true, lastCheckedAt: '2026-09-16T12:00:00Z', declinedVersion: null },
+  { engagementId: 'ENG-1004', engagementName: 'Pinecrest Holdings 2026', templateId: 'AUDIT-CA', templateDisplayName: 'Canadian Audit Engagement', currentVersion: 5, latestVersion: 5, status: UpdateStatus.UP_TO_DATE, pendingUpdateCount: 0, summaryAvailable: false, lastCheckedAt: '2026-09-16T12:00:00Z', declinedVersion: null },
+  { engagementId: 'ENG-1005', engagementName: 'Cedar Peak Services 2026', templateId: 'REVIEW-CA', templateDisplayName: 'Canadian Review Engagement', currentVersion: 8, latestVersion: 8, status: UpdateStatus.UP_TO_DATE, pendingUpdateCount: 0, summaryAvailable: false, lastCheckedAt: '2026-09-16T12:00:00Z', declinedVersion: null },
+  { engagementId: 'ENG-1006', engagementName: 'Westmount Consulting 2026', templateId: 'REVIEW-CA', templateDisplayName: 'Canadian Review Engagement', currentVersion: 7, latestVersion: 8, status: UpdateStatus.PENDING, pendingUpdateCount: 1, summaryAvailable: true, lastCheckedAt: '2026-09-16T12:00:00Z', declinedVersion: null },
+  { engagementId: 'ENG-1007', engagementName: 'Bluewater Hospitality 2026', templateId: 'REVIEW-CA', templateDisplayName: 'Canadian Review Engagement', currentVersion: 6, latestVersion: 8, status: UpdateStatus.PENDING, pendingUpdateCount: 2, summaryAvailable: true, lastCheckedAt: '2026-09-16T12:00:00Z', declinedVersion: null },
+  { engagementId: 'ENG-1008', engagementName: 'Summit Property Group 2026', templateId: 'REVIEW-CA', templateDisplayName: 'Canadian Review Engagement', currentVersion: 8, latestVersion: 8, status: UpdateStatus.UP_TO_DATE, pendingUpdateCount: 0, summaryAvailable: false, lastCheckedAt: '2026-09-16T12:00:00Z', declinedVersion: null },
+  { engagementId: 'ENG-1009', engagementName: 'Northern Grid Energy 2026', templateId: 'RISK-CA', templateDisplayName: 'Canadian Risk Assessment', currentVersion: 12, latestVersion: 12, status: UpdateStatus.UP_TO_DATE, pendingUpdateCount: 0, summaryAvailable: false, lastCheckedAt: '2026-09-16T12:00:00Z', declinedVersion: null },
+  { engagementId: 'ENG-1010', engagementName: 'Greenfield Health Services 2026', templateId: 'RISK-CA', templateDisplayName: 'Canadian Risk Assessment', currentVersion: 11, latestVersion: 12, status: UpdateStatus.PENDING, pendingUpdateCount: 1, summaryAvailable: true, lastCheckedAt: '2026-09-16T12:00:00Z', declinedVersion: null },
+  { engagementId: 'ENG-1011', engagementName: 'Stonebridge Construction 2026', templateId: 'RISK-CA', templateDisplayName: 'Canadian Risk Assessment', currentVersion: 10, latestVersion: 12, status: UpdateStatus.PENDING, pendingUpdateCount: 2, summaryAvailable: true, lastCheckedAt: '2026-09-16T12:00:00Z', declinedVersion: null },
+  { engagementId: 'ENG-1012', engagementName: 'Prairie Star Investments 2026', templateId: 'RISK-CA', templateDisplayName: 'Canadian Risk Assessment', currentVersion: 12, latestVersion: 12, status: UpdateStatus.UP_TO_DATE, pendingUpdateCount: 0, summaryAvailable: false, lastCheckedAt: '2026-09-16T12:00:00Z', declinedVersion: null },
 ];
 
 @Injectable({ providedIn: 'root' })
@@ -297,10 +297,25 @@ export class EngagementUpdateService {
             status: UpdateStatus.UP_TO_DATE,
             pendingUpdateCount: 0,
             summaryAvailable: false,
+            declinedVersion: null,
           };
         })
       );
-      this.selectedDetails.set(null);
     }
+
+    if (decision === DecisionType.DECLINE) {
+      this.engagements.update((engagements) =>
+        engagements.map((e) => {
+          if (e.engagementId !== engagementId) return e;
+          return {
+            ...e,
+            status: UpdateStatus.DECLINED,
+            declinedVersion: e.latestVersion,
+          };
+        })
+      );
+    }
+
+    this.selectedDetails.set(null);
   }
 }

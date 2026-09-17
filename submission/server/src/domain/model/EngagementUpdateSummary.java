@@ -12,5 +12,6 @@ public record EngagementUpdateSummary(
     UpdateStatus status,
     int pendingUpdateCount,
     boolean summaryAvailable,
-    Instant lastCheckedAt
+    Instant lastCheckedAt,
+    Integer declinedVersion
 ) {}

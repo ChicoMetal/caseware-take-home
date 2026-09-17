@@ -4,6 +4,7 @@ export enum UpdateStatus {
   UP_TO_DATE = 'UP_TO_DATE',
   PENDING = 'PENDING',
   COMPUTING = 'COMPUTING',
+  DECLINED = 'DECLINED',
   ERROR = 'ERROR',
 }
 
@@ -30,6 +31,7 @@ export interface EngagementUpdateSummary {
   pendingUpdateCount: number;
   summaryAvailable: boolean;
   lastCheckedAt: string;
+  declinedVersion: number | null;
 }
 
 export interface EngagementUpdateDetails {

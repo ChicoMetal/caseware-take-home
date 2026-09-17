@@ -23,7 +23,8 @@ public class UpdateStateResolver {
         this.templateProvider = templateProvider;
     }
 
-    public EngagementUpdateSummary resolveUpdateState(EngagementRecord engagement) {
+    public EngagementUpdateSummary resolveUpdateState(EngagementRecord engagement,
+                                                      Integer declinedVersion) {
         TemplateVersion latest = templateProvider.getLatestVersion(engagement.templateId());
 
         if (engagement.templateVersion() >= latest.version()) {
@@ -37,11 +38,28 @@ public class UpdateStateResolver {
                 UpdateStatus.UP_TO_DATE,
                 0,
                 false,
-                Instant.now()
+                Instant.now(),
+                null
             );
         }
 
         int pendingCount = latest.version() - engagement.templateVersion();
+
+        if (declinedVersion != null && declinedVersion >= latest.version()) {
+            return new EngagementUpdateSummary(
+                engagement.engagementId(),
+                engagement.name(),
+                engagement.templateId(),
+                latest.displayName(),
+                engagement.templateVersion(),
+                latest.version(),
+                UpdateStatus.DECLINED,
+                pendingCount,
+                true,
+                Instant.now(),
+                declinedVersion
+            );
+        }
 
         return new EngagementUpdateSummary(
             engagement.engagementId(),
@@ -53,7 +71,8 @@ public class UpdateStateResolver {
             UpdateStatus.PENDING,
             pendingCount,
             true,
-            Instant.now()
+            Instant.now(),
+            declinedVersion
         );
     }
 

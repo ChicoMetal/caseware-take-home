@@ -25,6 +25,10 @@ export class EngagementListComponent {
     this.updateService.submitDecision(engagementId, DecisionType.APPLY);
   }
 
+  onDecline(engagementId: string): void {
+    this.updateService.submitDecision(engagementId, DecisionType.DECLINE);
+  }
+
   statusLabel(status: UpdateStatus): string {
     switch (status) {
       case UpdateStatus.UP_TO_DATE:
@@ -33,6 +37,8 @@ export class EngagementListComponent {
         return 'Update available';
       case UpdateStatus.COMPUTING:
         return 'Preparing summary...';
+      case UpdateStatus.DECLINED:
+        return 'Declined';
       case UpdateStatus.ERROR:
         return 'Error';
     }
