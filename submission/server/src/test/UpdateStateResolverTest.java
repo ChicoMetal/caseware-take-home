@@ -10,32 +10,23 @@ import java.time.Instant;
 import java.util.List;
 
 import static java.util.Collections.emptyList;
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
 
 /**
  * Focused tests for UpdateStateResolver.
  * Ports are stubbed to isolate domain logic.
- *
- * In a real project these would use JUnit 5 + Mockito.
- * Here we use plain assertions to avoid framework dependencies.
  */
 public class UpdateStateResolverTest {
 
     private static final Instant NOW = Instant.parse("2026-08-18T13:00:00Z");
 
-    public static void main(String[] args) {
-        testEngagementUpToDate();
-        testEngagementOneVersionBehind();
-        testEngagementTwoVersionsBehind();
-        testDeclinedEngagementStaysDeclined();
-        testDeclinedEngagementReturnsToPendingOnNewVersion();
-
-        System.out.println("All UpdateStateResolver tests passed.");
-    }
-
     /**
-     * Engagement at v5, latest is v5 → UP_TO_DATE, no diffs invoked.
+     * Engagement at v5, latest is v5 -> UP_TO_DATE, no diffs invoked.
      */
-    static void testEngagementUpToDate() {
+    @Test
+    void testEngagementUpToDate() {
         var engagement = new EngagementRecord("ENG-1001", "FIRM-001", "Northstar Manufacturing 2026", "AUDIT-CA", 5);
         var latestVersion = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
 
@@ -51,20 +42,19 @@ public class UpdateStateResolverTest {
         var resolver = new UpdateStateResolver(diffProvider, transformer, templateProvider);
         EngagementUpdateSummary result = resolver.resolveUpdateState(engagement, null);
 
-        assertEqual(UpdateStatus.UP_TO_DATE, result.status(), "status");
-        assertEqual(0, result.pendingUpdateCount(), "pendingUpdateCount");
-        assertEqual(5, result.currentVersion(), "currentVersion");
-        assertEqual(5, result.latestVersion(), "latestVersion");
-        assertEqual(false, result.summaryAvailable(), "summaryAvailable");
-
-        System.out.println("  ✓ testEngagementUpToDate");
+        assertEquals(UpdateStatus.UP_TO_DATE, result.status(), "status");
+        assertEquals(0, result.pendingUpdateCount(), "pendingUpdateCount");
+        assertEquals(5, result.currentVersion(), "currentVersion");
+        assertEquals(5, result.latestVersion(), "latestVersion");
+        assertEquals(false, result.summaryAvailable(), "summaryAvailable");
     }
 
     /**
-     * Engagement at v4, latest is v5 → PENDING with 1 update.
+     * Engagement at v4, latest is v5 -> PENDING with 1 update.
      * resolveUpdateDetails produces 1 collapsed summary and 1 step-by-step entry.
      */
-    static void testEngagementOneVersionBehind() {
+    @Test
+    void testEngagementOneVersionBehind() {
         var engagement = new EngagementRecord("ENG-1002", "FIRM-001", "Maple Ridge Foods 2026", "AUDIT-CA", 4);
         var latestVersion = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
         var v5 = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
@@ -74,7 +64,7 @@ public class UpdateStateResolverTest {
         ));
         TemplateDiffProvider diffProvider = (templateId, from, to) -> {
             if (from == 4 && to == 5) return collapsedDiff;
-            throw new AssertionError("Unexpected diff request: " + from + " → " + to);
+            throw new AssertionError("Unexpected diff request: " + from + " -> " + to);
         };
 
         var stubSummary = new ChangeSummary(4, 5, NOW, List.of(), 1);
@@ -85,27 +75,26 @@ public class UpdateStateResolverTest {
 
         // Test state resolution
         EngagementUpdateSummary state = resolver.resolveUpdateState(engagement, null);
-        assertEqual(UpdateStatus.PENDING, state.status(), "status");
-        assertEqual(1, state.pendingUpdateCount(), "pendingUpdateCount");
+        assertEquals(UpdateStatus.PENDING, state.status(), "status");
+        assertEquals(1, state.pendingUpdateCount(), "pendingUpdateCount");
 
         // Test detail resolution
         EngagementUpdateDetails details = resolver.resolveUpdateDetails(engagement);
-        assertEqual(4, details.currentVersion(), "currentVersion");
-        assertEqual(5, details.latestVersion(), "latestVersion");
+        assertEquals(4, details.currentVersion(), "currentVersion");
+        assertEquals(5, details.latestVersion(), "latestVersion");
         assertNotNull(details.collapsedSummary(), "collapsedSummary");
-        assertEqual(1, details.stepByStepSummaries().size(), "stepByStep size");
+        assertEquals(1, details.stepByStepSummaries().size(), "stepByStep size");
         assertNotNull(details.freshness(), "freshness");
         assertNotNull(details.freshness().computedAt(), "freshness.computedAt");
-        assertEqual(NOW, details.freshness().templatePublishedAt(), "freshness.templatePublishedAt");
-
-        System.out.println("  ✓ testEngagementOneVersionBehind");
+        assertEquals(NOW, details.freshness().templatePublishedAt(), "freshness.templatePublishedAt");
     }
 
     /**
-     * Engagement at v3, latest is v5 → PENDING with 2 updates.
-     * resolveUpdateDetails produces 1 collapsed summary (v3→v5) and 2 step-by-step entries.
+     * Engagement at v3, latest is v5 -> PENDING with 2 updates.
+     * resolveUpdateDetails produces 1 collapsed summary (v3->v5) and 2 step-by-step entries.
      */
-    static void testEngagementTwoVersionsBehind() {
+    @Test
+    void testEngagementTwoVersionsBehind() {
         var engagement = new EngagementRecord("ENG-1003", "FIRM-001", "Harbourview Logistics 2026", "AUDIT-CA", 3);
         var latestVersion = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
         var v4 = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 4, Instant.parse("2026-07-07T13:00:00Z"));
@@ -126,33 +115,32 @@ public class UpdateStateResolverTest {
 
         // Test state resolution
         EngagementUpdateSummary state = resolver.resolveUpdateState(engagement, null);
-        assertEqual(UpdateStatus.PENDING, state.status(), "status");
-        assertEqual(2, state.pendingUpdateCount(), "pendingUpdateCount");
+        assertEquals(UpdateStatus.PENDING, state.status(), "status");
+        assertEquals(2, state.pendingUpdateCount(), "pendingUpdateCount");
 
         // Test detail resolution
         EngagementUpdateDetails details = resolver.resolveUpdateDetails(engagement);
-        assertEqual(3, details.currentVersion(), "currentVersion");
-        assertEqual(5, details.latestVersion(), "latestVersion");
+        assertEquals(3, details.currentVersion(), "currentVersion");
+        assertEquals(5, details.latestVersion(), "latestVersion");
 
-        // Collapsed: v3→v5
-        assertEqual(3, details.collapsedSummary().fromVersion(), "collapsed fromVersion");
-        assertEqual(5, details.collapsedSummary().toVersion(), "collapsed toVersion");
+        // Collapsed: v3->v5
+        assertEquals(3, details.collapsedSummary().fromVersion(), "collapsed fromVersion");
+        assertEquals(5, details.collapsedSummary().toVersion(), "collapsed toVersion");
 
-        // Step-by-step: v3→v4, v4→v5
-        assertEqual(2, details.stepByStepSummaries().size(), "stepByStep size");
-        assertEqual(3, details.stepByStepSummaries().get(0).fromVersion(), "step[0] fromVersion");
-        assertEqual(4, details.stepByStepSummaries().get(0).toVersion(), "step[0] toVersion");
-        assertEqual(4, details.stepByStepSummaries().get(1).fromVersion(), "step[1] fromVersion");
-        assertEqual(5, details.stepByStepSummaries().get(1).toVersion(), "step[1] toVersion");
+        // Step-by-step: v3->v4, v4->v5
+        assertEquals(2, details.stepByStepSummaries().size(), "stepByStep size");
+        assertEquals(3, details.stepByStepSummaries().get(0).fromVersion(), "step[0] fromVersion");
+        assertEquals(4, details.stepByStepSummaries().get(0).toVersion(), "step[0] toVersion");
+        assertEquals(4, details.stepByStepSummaries().get(1).fromVersion(), "step[1] fromVersion");
+        assertEquals(5, details.stepByStepSummaries().get(1).toVersion(), "step[1] toVersion");
         assertNotNull(details.freshness(), "freshness");
-
-        System.out.println("  ✓ testEngagementTwoVersionsBehind");
     }
 
     /**
-     * Engagement at v4, latest v5, declined v5 → DECLINED.
+     * Engagement at v4, latest v5, declined v5 -> DECLINED.
      */
-    static void testDeclinedEngagementStaysDeclined() {
+    @Test
+    void testDeclinedEngagementStaysDeclined() {
         var engagement = new EngagementRecord("ENG-2001", "FIRM-001", "Declined Corp 2026", "AUDIT-CA", 4);
         var latestVersion = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
 
@@ -167,18 +155,17 @@ public class UpdateStateResolverTest {
         var resolver = new UpdateStateResolver(diffProvider, transformer, templateProvider);
         EngagementUpdateSummary result = resolver.resolveUpdateState(engagement, 5);
 
-        assertEqual(UpdateStatus.DECLINED, result.status(), "status");
-        assertEqual(1, result.pendingUpdateCount(), "pendingUpdateCount");
-        assertEqual(true, result.summaryAvailable(), "summaryAvailable");
-        assertEqual(5, result.declinedVersion(), "declinedVersion");
-
-        System.out.println("  ✓ testDeclinedEngagementStaysDeclined");
+        assertEquals(UpdateStatus.DECLINED, result.status(), "status");
+        assertEquals(1, result.pendingUpdateCount(), "pendingUpdateCount");
+        assertEquals(true, result.summaryAvailable(), "summaryAvailable");
+        assertEquals(5, result.declinedVersion(), "declinedVersion");
     }
 
     /**
-     * Engagement at v4, declined v5, but new v6 published → back to PENDING.
+     * Engagement at v4, declined v5, but new v6 published -> back to PENDING.
      */
-    static void testDeclinedEngagementReturnsToPendingOnNewVersion() {
+    @Test
+    void testDeclinedEngagementReturnsToPendingOnNewVersion() {
         var engagement = new EngagementRecord("ENG-2002", "FIRM-001", "Re-pending Corp 2026", "AUDIT-CA", 4);
         var latestVersion = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 6, NOW);
 
@@ -193,11 +180,9 @@ public class UpdateStateResolverTest {
         var resolver = new UpdateStateResolver(diffProvider, transformer, templateProvider);
         EngagementUpdateSummary result = resolver.resolveUpdateState(engagement, 5);
 
-        assertEqual(UpdateStatus.PENDING, result.status(), "status");
-        assertEqual(2, result.pendingUpdateCount(), "pendingUpdateCount");
-        assertEqual(5, result.declinedVersion(), "declinedVersion");
-
-        System.out.println("  ✓ testDeclinedEngagementReturnsToPendingOnNewVersion");
+        assertEquals(UpdateStatus.PENDING, result.status(), "status");
+        assertEquals(2, result.pendingUpdateCount(), "pendingUpdateCount");
+        assertEquals(5, result.declinedVersion(), "declinedVersion");
     }
 
     // --- Helpers ---
@@ -215,19 +200,5 @@ public class UpdateStateResolverTest {
                 return intermediates;
             }
         };
-    }
-
-    private static void assertEqual(Object expected, Object actual, String field) {
-        if (!expected.equals(actual)) {
-            throw new AssertionError(
-                "Expected %s = %s, got %s".formatted(field, expected, actual)
-            );
-        }
-    }
-
-    private static void assertNotNull(Object value, String field) {
-        if (value == null) {
-            throw new AssertionError("Expected %s to be non-null".formatted(field));
-        }
     }
 }

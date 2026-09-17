@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+submission/server/out/
+submission/server/lib/
+
+# Angular cache
+.angular/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+activity.md
+strategy-guide.html
+resources/
