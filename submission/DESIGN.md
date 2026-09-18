@@ -109,8 +109,11 @@ The raw-to-human transformation is performed **server-side**, inside the `RuleBa
 3. **Domain service** — `UpdateStateResolver` orchestrates state resolution and detail retrieval through ports.
 4. **Adapter** — `RuleBasedDiffSummaryTransformer` implements the deterministic diff-to-summary transformation.
 5. **Angular models** — TypeScript interfaces mirroring the API contract.
-6. **Angular service** — Signal-based state management with fixture data simulating API responses.
-7. **Angular components** — Engagement list with status indicators, update detail view with collapsed/step-by-step summaries, and apply action.
+6. **Angular API layer** — Observable-based HTTP simulation with configurable failure rate and latency. Returns `Observable<T>` using `structuredClone()` to prevent fixture mutation across calls.
+7. **Angular Store** — Signal-based state container holding engagements, selected details, loading flags, and errors. Exposes derived signals (`pendingCount`, `hasError`).
+8. **Angular Effects** — Side-effect orchestrator. Each command wraps its API call in `defer()` + `retry()` with exponential backoff. Clears stale state before each load to prevent showing deprecated data on failure. Retry configuration is injectable via `InjectionToken<RetryConfig>` for testability.
+9. **Angular Facade** — Public API for components. Exposes read-only signals and delegates commands to Effects. Components never touch the API or Store directly.
+10. **Angular components** — Engagement list with status indicators and error/retry UI. Update detail rendered in a modal overlay, reads directly from the Store via the Facade, and owns its own apply/decline actions.
 
 ## 3. Testing Strategy
 
@@ -119,7 +122,13 @@ The raw-to-human transformation is performed **server-side**, inside the `RuleBa
 - `RuleBasedDiffSummaryTransformerTest` — Verifies all three operation types (`add`, `replace`, `remove`) produce correct `HumanReadableChange` entries with appropriate types, descriptions, and impact levels. Verifies changes are grouped by section.
 
 **Client (Angular):**
-- Service test verifying that `submitDecision('APPLY')` transitions an engagement from `PENDING` to `UP_TO_DATE` and updates its version.
+- Facade integration tests (6 scenarios) using `fakeAsync`/`tick` with zero-delay retry configuration via `InjectionToken<RetryConfig>`:
+  - Load engagements successfully through the API → Store → Facade pipeline.
+  - Error propagation after exhausting retries (verifies retry count and error message).
+  - Load engagement details by ID.
+  - `APPLY` decision transitions engagement from `PENDING` to `UP_TO_DATE`, updates version, and clears selection.
+  - `DECLINE` decision transitions engagement to `DECLINED` with `declinedVersion` recorded.
+  - Recovery after transient API failure (retries succeed on subsequent attempts).
 
 **Cross-cutting:**
 - Manual verification that TypeScript interfaces, Java records, and the API contract in this document use identical field names and types.

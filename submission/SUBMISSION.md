@@ -28,7 +28,7 @@
 - **DiffOperation helper methods:** AI initially suggested using Jackson `JsonNode` for the diff operation values. I rewrote these to use plain `Map<String, Object>` and `Object` types to avoid framework dependencies as the exercise requires.
 - **Domain boundaries:** AI suggested putting the `DiffSummaryTransformer` implementation directly in the domain service package. I restructured to a proper DDD layout with ports (interfaces) in the domain and the implementation as an adapter.
 - **Impact assessment logic:** AI's initial impact rules were too simplistic (all adds = HIGH). I refined the heuristics to distinguish required fields (HIGH) from optional additions (MEDIUM).
-- **Angular state management:** AI initially suggested using BehaviorSubjects (RxJS). I rewrote to use Angular Signals for a more modern approach consistent with Angular 18+.
+- **Angular state management:** AI initially suggested a flat service with BehaviorSubjects. I restructured into a full Redux-inspired architecture: API (Observable-based), Store (signals), Effects (side effects with retry), and Facade (public component API). This separation was driven by the need to simulate realistic API failure scenarios and demonstrate proper retry handling with exponential backoff.
 
 ### How I would guide other engineers using AI on this system
 
@@ -48,18 +48,17 @@
 - Design document and architecture decisions: ~50 minutes
 - Java domain implementation (models, ports, service, adapter): ~60 minutes
 - Java tests: ~20 minutes
-- Angular implementation (models, service, components): ~40 minutes
-- Angular test: ~10 minutes
+- Angular implementation (models, API simulation, Store, Effects, Facade, components): ~90 minutes
+- Angular tests (6 facade integration scenarios with retry/backoff): ~30 minutes
 - Submission notes and review: ~20 minutes
-- **Total: ~3.5 hours** (slightly over the 3-hour target due to investing extra time in the DDD port/adapter structure)
+- **Total: ~4.5 hours** (over the 3-hour target due to investing in the Redux-inspired architecture with retry simulation and the DDD port/adapter structure on the server)
 
 ## What I Would Do Next
 
-1. **Complete decline flow** — Add `DECLINED` status, `declinedVersion` tracking, and the re-evaluation logic when a new version is published after a decline.
-2. **Reconciliation job** — Implement the periodic reconciliation that detects index staleness and fills gaps from missed events.
-3. **Real HTTP integration** — Replace the Angular fixture data with actual HTTP calls, including loading states, error handling, and retry logic.
-4. **Accessibility** — Add ARIA labels, keyboard navigation, and screen reader support to the Angular components.
-5. **Pagination and performance** — For firms with hundreds of engagements, add server-side pagination and client-side virtual scrolling.
-6. **E2E tests** — Integration tests covering the full flow from template publication event through to the user seeing the update and making a decision.
-7. **Observability implementation** — Wire up the metrics, alerts, and logging described in the design document.
-8. **LLM-enhanced summaries** — Implement an alternative `DiffSummaryTransformer` adapter that uses an LLM to generate more natural, context-aware change descriptions while keeping the rule-based version as the deterministic fallback.
+1. **Reconciliation job** — Implement the periodic reconciliation that detects index staleness and fills gaps from missed events.
+2. **Real HTTP integration** — Replace the Observable-based API simulation with actual `HttpClient` calls. The existing retry/backoff infrastructure and Store architecture carry over unchanged.
+3. **Accessibility refinements** — Expand ARIA support beyond the current modal (which has `aria-modal`, `aria-label`, and Escape/backdrop dismiss). Add focus trapping inside the modal and screen reader announcements for state transitions.
+4. **Pagination and performance** — For firms with hundreds of engagements, add server-side pagination and client-side virtual scrolling.
+5. **E2E tests** — Integration tests covering the full flow from template publication event through to the user seeing the update and making a decision.
+6. **Observability implementation** — Wire up the metrics, alerts, and logging described in the design document.
+7. **LLM-enhanced summaries** — Implement an alternative `DiffSummaryTransformer` adapter that uses an LLM to generate more natural, context-aware change descriptions while keeping the rule-based version as the deterministic fallback.
