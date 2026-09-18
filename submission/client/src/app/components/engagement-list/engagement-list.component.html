@@ -1,49 +1,70 @@
 <h1>Engagement Template Updates</h1>
 
-<table>
-  <thead>
-    <tr>
-      <th>Engagement</th>
-      <th>Template</th>
-      <th>Version</th>
-      <th>Status</th>
-      <th>Action</th>
-    </tr>
-  </thead>
-  <tbody>
-    @for (engagement of engagements(); track engagement.engagementId) {
+@if (error(); as errorMessage) {
+  <div role="alert">
+    <p><strong>Error:</strong> {{ errorMessage }}</p>
+    <button (click)="retry()">Retry</button>
+  </div>
+}
+
+@if (loading()) {
+  <p>Loading engagements...</p>
+}
+
+@if (!loading() && engagements().length > 0) {
+  <table>
+    <thead>
       <tr>
-        <td>{{ engagement.engagementName }}</td>
-        <td>{{ engagement.templateDisplayName }}</td>
-        <td>v{{ engagement.currentVersion }} / v{{ engagement.latestVersion }}</td>
-        <td>
-          {{ statusLabel(engagement.status) }}
-          @if (engagement.pendingUpdateCount > 0) {
-            ({{ engagement.pendingUpdateCount }} pending)
-          }
-        </td>
-        <td>
-          @if ((engagement.status === UpdateStatus.PENDING || engagement.status === UpdateStatus.DECLINED) && engagement.summaryAvailable) {
-            <button (click)="selectEngagement(engagement.engagementId)">
-              Review Changes
-            </button>
-          }
-          @if (engagement.status === UpdateStatus.COMPUTING) {
-            <span>Calculating...</span>
-          }
-          @if (engagement.status === UpdateStatus.DECLINED) {
-            <span>(declined v{{ engagement.declinedVersion }})</span>
-          }
-        </td>
+        <th>Engagement</th>
+        <th>Template</th>
+        <th>Version</th>
+        <th>Status</th>
+        <th>Action</th>
       </tr>
-    }
-  </tbody>
-</table>
+    </thead>
+    <tbody>
+      @for (engagement of engagements(); track engagement.engagementId) {
+        <tr>
+          <td>{{ engagement.engagementName }}</td>
+          <td>{{ engagement.templateDisplayName }}</td>
+          <td>v{{ engagement.currentVersion }} / v{{ engagement.latestVersion }}</td>
+          <td>
+            {{ statusLabel(engagement.status) }}
+            @if (engagement.pendingUpdateCount > 0) {
+              ({{ engagement.pendingUpdateCount }} pending)
+            }
+          </td>
+          <td>
+            @if ((engagement.status === UpdateStatus.PENDING || engagement.status === UpdateStatus.DECLINED) && engagement.summaryAvailable) {
+              <button (click)="selectEngagement(engagement.engagementId)">
+                Review Changes
+              </button>
+            }
+            @if (engagement.status === UpdateStatus.COMPUTING || ((engagement.status === UpdateStatus.PENDING || engagement.status === UpdateStatus.DECLINED) && !engagement.summaryAvailable)) {
+              <span>Calculating...</span>
+            }
+            @if (engagement.status === UpdateStatus.DECLINED) {
+              <span>(declined v{{ engagement.declinedVersion }})</span>
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}
+
+@if (!loading() && engagements().length === 0 && !error()) {
+  <p>No engagements found.</p>
+}
+
+@if (detailLoading()) {
+  <p>Loading update details...</p>
+}
 
 @if (selectedDetails(); as details) {
   <app-update-detail
     [details]="details"
-    (apply)="onApply(details.engagementId)"
-    (decline)="onDecline(details.engagementId)"
+    (apply)="onApply(details.engagementId, details.latestVersion)"
+    (decline)="onDecline(details.engagementId, details.latestVersion)"
   />
 }
