@@ -1,16 +1,13 @@
-import { Injectable, signal } from '@angular/core';
 import {
   EngagementUpdateSummary,
   EngagementUpdateDetails,
   UpdateStatus,
   ChangeType,
   Impact,
-  DecisionType,
 } from '../models/engagement-update.models';
 
-/** Fixture data built from the provided sample files, simulating the REST API responses. */
-
-const FIXTURE_DETAILS: Record<string, EngagementUpdateDetails> = {
+/** Fixture detail data keyed by engagement ID, simulating GET /api/engagements/{id}/update-details. */
+export const FIXTURE_DETAILS: Record<string, EngagementUpdateDetails> = {
   'ENG-1002': {
     engagementId: 'ENG-1002',
     currentVersion: 4,
@@ -250,7 +247,8 @@ const FIXTURE_DETAILS: Record<string, EngagementUpdateDetails> = {
   },
 };
 
-const FIXTURE_ENGAGEMENTS: EngagementUpdateSummary[] = [
+/** Fixture engagement list, simulating GET /api/engagements/updates?firmId=FIRM-01. */
+export const FIXTURE_ENGAGEMENTS: EngagementUpdateSummary[] = [
   { engagementId: 'ENG-1001', engagementName: 'Northstar Manufacturing 2026', templateId: 'AUDIT-CA', templateDisplayName: 'Canadian Audit Engagement', currentVersion: 5, latestVersion: 5, status: UpdateStatus.UP_TO_DATE, pendingUpdateCount: 0, summaryAvailable: false, lastCheckedAt: '2026-09-16T12:00:00Z', declinedVersion: null },
   { engagementId: 'ENG-1002', engagementName: 'Maple Ridge Foods 2026', templateId: 'AUDIT-CA', templateDisplayName: 'Canadian Audit Engagement', currentVersion: 4, latestVersion: 5, status: UpdateStatus.PENDING, pendingUpdateCount: 1, summaryAvailable: true, lastCheckedAt: '2026-09-16T12:00:00Z', declinedVersion: null },
   { engagementId: 'ENG-1003', engagementName: 'Harbourview Logistics 2026', templateId: 'AUDIT-CA', templateDisplayName: 'Canadian Audit Engagement', currentVersion: 3, latestVersion: 5, status: UpdateStatus.PENDING, pendingUpdateCount: 2, summaryAvailable: true, lastCheckedAt: '2026-09-16T12:00:00Z', declinedVersion: null },
@@ -264,73 +262,3 @@ const FIXTURE_ENGAGEMENTS: EngagementUpdateSummary[] = [
   { engagementId: 'ENG-1011', engagementName: 'Stonebridge Construction 2026', templateId: 'RISK-CA', templateDisplayName: 'Canadian Risk Assessment', currentVersion: 10, latestVersion: 12, status: UpdateStatus.PENDING, pendingUpdateCount: 2, summaryAvailable: true, lastCheckedAt: '2026-09-16T12:00:00Z', declinedVersion: null },
   { engagementId: 'ENG-1012', engagementName: 'Prairie Star Investments 2026', templateId: 'RISK-CA', templateDisplayName: 'Canadian Risk Assessment', currentVersion: 12, latestVersion: 12, status: UpdateStatus.UP_TO_DATE, pendingUpdateCount: 0, summaryAvailable: false, lastCheckedAt: '2026-09-16T12:00:00Z', declinedVersion: null },
 ];
-
-/**
- * State management service for engagement template updates.
- *
- * Owns the reactive state (via Angular Signals) for the engagement list and
- * the currently selected detail view. Currently backed by in-memory fixture
- * data; in production this would delegate to the REST API defined in DESIGN.md.
- */
-@Injectable({ providedIn: 'root' })
-export class EngagementUpdateService {
-  /** Reactive list of all engagement summaries for the current firm. */
-  readonly engagements = signal<EngagementUpdateSummary[]>(FIXTURE_ENGAGEMENTS);
-
-  /** Currently selected engagement's update details, or null when no selection is active. */
-  readonly selectedDetails = signal<EngagementUpdateDetails | null>(null);
-
-  /** Looks up detail data for the given engagement and sets it as the active selection. */
-  selectEngagement(engagementId: string): void {
-    const details = FIXTURE_DETAILS[engagementId] ?? null;
-    this.selectedDetails.set(details);
-  }
-
-  /** Resets the detail panel by clearing the active selection. */
-  clearSelection(): void {
-    this.selectedDetails.set(null);
-  }
-
-  /**
-   * Records a user's decision on a pending template update.
-   *
-   * - APPLY: promotes the engagement to the latest template version, clears
-   *   pending state and any prior decline.
-   * - DECLINE: marks the engagement as declined and records the declined version
-   *   (so the UI can distinguish "seen and rejected" from "never reviewed").
-   *
-   * Clears the detail selection after either decision path.
-   */
-  submitDecision(engagementId: string, decision: DecisionType): void {
-    if (decision === DecisionType.APPLY) {
-      this.engagements.update((engagements: EngagementUpdateSummary[]) =>
-        engagements.map((e: EngagementUpdateSummary) => {
-          if (e.engagementId !== engagementId) return e;
-          return {
-            ...e,
-            currentVersion: e.latestVersion,
-            status: UpdateStatus.UP_TO_DATE,
-            pendingUpdateCount: 0,
-            summaryAvailable: false,
-            declinedVersion: null,
-          };
-        })
-      );
-    }
-
-    if (decision === DecisionType.DECLINE) {
-      this.engagements.update((engagements: EngagementUpdateSummary[]) =>
-        engagements.map((e: EngagementUpdateSummary) => {
-          if (e.engagementId !== engagementId) return e;
-          return {
-            ...e,
-            status: UpdateStatus.DECLINED,
-            declinedVersion: e.latestVersion,
-          };
-        })
-      );
-    }
-
-    this.selectedDetails.set(null);
-  }
-}

@@ -1,6 +1,6 @@
-import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { EngagementUpdateService } from '../../services/engagement-update.service';
+import { EngagementUpdateFacade } from '../../facades/engagement-update.facade';
 import { UpdateDetailComponent } from '../update-detail/update-detail.component';
 import { UpdateStatus, DecisionType } from '../../models/engagement-update.models';
 
@@ -15,27 +15,37 @@ import { UpdateStatus, DecisionType } from '../../models/engagement-update.model
   templateUrl: './engagement-list.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class EngagementListComponent {
-  private readonly updateService = inject(EngagementUpdateService);
+export class EngagementListComponent implements OnInit {
+  private readonly facade = inject(EngagementUpdateFacade);
 
-  /** Exposed for template enum comparisons (e.g., status === UpdateStatus.PENDING). */
   readonly UpdateStatus = UpdateStatus;
-  readonly engagements = this.updateService.engagements;
-  readonly selectedDetails = this.updateService.selectedDetails;
+  readonly engagements = this.facade.engagements;
+  readonly selectedDetails = this.facade.selectedDetails;
+  readonly loading = this.facade.loading;
+  readonly detailLoading = this.facade.detailLoading;
+  readonly error = this.facade.error;
+
+  ngOnInit(): void {
+    this.facade.loadEngagements();
+  }
 
   selectEngagement(engagementId: string): void {
-    this.updateService.selectEngagement(engagementId);
+    this.facade.selectEngagement(engagementId);
   }
 
-  onApply(engagementId: string): void {
-    this.updateService.submitDecision(engagementId, DecisionType.APPLY);
+  onApply(engagementId: string, targetVersion: number): void {
+    this.facade.submitDecision(engagementId, DecisionType.APPLY, targetVersion);
   }
 
-  onDecline(engagementId: string): void {
-    this.updateService.submitDecision(engagementId, DecisionType.DECLINE);
+  onDecline(engagementId: string, targetVersion: number): void {
+    this.facade.submitDecision(engagementId, DecisionType.DECLINE, targetVersion);
   }
 
-  /** Maps {@link UpdateStatus} enum values to user-facing display text. */
+  retry(): void {
+    this.facade.clearError();
+    this.facade.loadEngagements();
+  }
+
   statusLabel(status: UpdateStatus): string {
     switch (status) {
       case UpdateStatus.UP_TO_DATE:
