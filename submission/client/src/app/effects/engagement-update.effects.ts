@@ -45,6 +45,7 @@ export class EngagementUpdateEffects {
   private readonly retryConfig = inject(RETRY_CONFIG);
 
   loadEngagements(): void {
+    this.store.setEngagements([]);
     this.store.setLoading(true);
     this.store.setError(null);
 
@@ -66,6 +67,7 @@ export class EngagementUpdateEffects {
   }
 
   loadDetails(engagementId: string): void {
+    this.store.setSelectedDetails(null);
     this.store.setDetailLoading(true);
     this.store.setError(null);
 
