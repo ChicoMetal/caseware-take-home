@@ -1,8 +1,7 @@
-import { Component, ChangeDetectionStrategy, inject, input, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EngagementUpdateFacade } from '../../facades/engagement-update.facade';
 import {
-  EngagementUpdateDetails,
   ChangeSummary,
   ChangeType,
   Impact,
@@ -12,8 +11,8 @@ import {
 /**
  * Displays the change summary for a pending template update.
  *
- * Supports two viewing modes: collapsed (all changes across skipped versions
- * merged into one list) and step-by-step (one summary per intermediate version).
+ * Reads selected engagement details directly from the Store via the Facade.
+ * Supports collapsed and step-by-step viewing modes.
  * Handles apply/decline decisions directly via the Facade.
  */
 @Component({
@@ -26,7 +25,7 @@ import {
 export class UpdateDetailComponent {
   private readonly facade = inject(EngagementUpdateFacade);
 
-  readonly details = input.required<EngagementUpdateDetails>();
+  readonly details = computed(() => this.facade.selectedDetails()!);
 
   readonly showStepByStep = signal(false);
 

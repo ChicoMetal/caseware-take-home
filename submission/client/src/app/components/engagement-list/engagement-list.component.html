@@ -65,11 +65,11 @@
   </div>
 }
 
-@if (selectedDetails(); as details) {
+@if (selectedDetails()) {
   <div class="modal-backdrop" (click)="onBackdropClick($event)">
     <div class="modal-content" role="dialog" aria-modal="true" aria-label="Update details">
       <button class="modal-close" (click)="closeModal()" aria-label="Close">&times;</button>
-      <app-update-detail [details]="details" />
+      <app-update-detail />
     </div>
   </div>
 }
