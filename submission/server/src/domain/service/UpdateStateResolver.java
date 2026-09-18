@@ -1,129 +1,73 @@
 package domain.service;
 
 import domain.model.*;
-import domain.port.DiffSummaryTransformer;
-import domain.port.TemplateDiffProvider;
+import domain.port.EngagementIndexRepository;
 import domain.port.TemplateVersionProvider;
+import domain.port.UpdateSummaryRepository;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 /**
- * Domain service that resolves engagement update state without loading full engagement files.
- * Compares the indexed engagement version against the latest published template version
- * and produces both list-level summaries and detailed change breakdowns.
+ * Read-side query service for engagement update state.
+ *
+ * <p>All state is pre-materialized in the index by {@link TemplateUpdateProcessor}.
+ * This service reads from the index and summary store — it never computes diffs
+ * or resolves status. It also handles user decisions (apply/decline), which update
+ * the index as a side effect.
  */
 public class UpdateStateResolver {
 
-    private final TemplateDiffProvider diffProvider;
-    private final DiffSummaryTransformer summaryTransformer;
+    private final EngagementIndexRepository indexRepository;
     private final TemplateVersionProvider templateProvider;
+    private final UpdateSummaryRepository summaryRepository;
 
-    public UpdateStateResolver(TemplateDiffProvider diffProvider,
-                               DiffSummaryTransformer summaryTransformer,
-                               TemplateVersionProvider templateProvider) {
-        this.diffProvider = Objects.requireNonNull(diffProvider, "diffProvider");
-        this.summaryTransformer = Objects.requireNonNull(summaryTransformer, "summaryTransformer");
+    public UpdateStateResolver(EngagementIndexRepository indexRepository,
+                               TemplateVersionProvider templateProvider,
+                               UpdateSummaryRepository summaryRepository) {
+        this.indexRepository = Objects.requireNonNull(indexRepository, "indexRepository");
         this.templateProvider = Objects.requireNonNull(templateProvider, "templateProvider");
+        this.summaryRepository = Objects.requireNonNull(summaryRepository, "summaryRepository");
     }
 
     /**
-     * Determines the update status for an engagement by comparing its version to the latest
-     * template version. Decline logic: if {@code declinedVersion >= latest}, status is DECLINED;
-     * if a newer version has since been published, the decline is superseded and status is PENDING.
+     * Lists all engagements for a firm with their pre-materialized update status.
+     * Maps index entries to API response objects.
      *
-     * @param engagement      the lightweight index entry for the engagement
-     * @param declinedVersion the version the user previously declined, or {@code null} if none
-     * @return list-level summary including status, pending count, and declined version tracking
+     * @param firmId the audit firm identifier
+     * @return list of engagement update summaries ready for the client
      */
-    public EngagementUpdateSummary resolveUpdateState(EngagementRecord engagement,
-                                                      Integer declinedVersion) {
-        TemplateVersion latest = templateProvider.getLatestVersion(engagement.templateId());
+    public List<EngagementUpdateSummary> listEngagementUpdates(String firmId) {
+        List<EngagementRecord> engagements = indexRepository.findByFirmId(firmId);
 
-        if (engagement.templateVersion() >= latest.version()) {
-            return new EngagementUpdateSummary(
-                engagement.engagementId(),
-                engagement.name(),
-                engagement.templateId(),
-                latest.displayName(),
-                engagement.templateVersion(),
-                latest.version(),
-                UpdateStatus.UP_TO_DATE,
-                0,
-                false,
-                Instant.now(),
-                null
-            );
-        }
-
-        int pendingCount = latest.version() - engagement.templateVersion();
-
-        if (declinedVersion != null && declinedVersion >= latest.version()) {
-            return new EngagementUpdateSummary(
-                engagement.engagementId(),
-                engagement.name(),
-                engagement.templateId(),
-                latest.displayName(),
-                engagement.templateVersion(),
-                latest.version(),
-                UpdateStatus.DECLINED,
-                pendingCount,
-                true,
-                Instant.now(),
-                declinedVersion
-            );
-        }
-
-        return new EngagementUpdateSummary(
-            engagement.engagementId(),
-            engagement.name(),
-            engagement.templateId(),
-            latest.displayName(),
-            engagement.templateVersion(),
-            latest.version(),
-            UpdateStatus.PENDING,
-            pendingCount,
-            true,
-            Instant.now(),
-            declinedVersion
-        );
+        return engagements.stream()
+            .map(this::toSummary)
+            .toList();
     }
 
     /**
-     * Computes detailed change information for an engagement's pending update.
-     * Produces two views: a collapsed summary (single diff from current to latest) and
-     * step-by-step summaries (one diff per consecutive version increment).
+     * Retrieves pre-computed change details for an engagement's pending update.
      *
-     * @param engagement the lightweight index entry for the engagement
-     * @return detail-level response with both summary views and freshness metadata
+     * @param engagementId the engagement to query
+     * @return detail-level response with both summary views
+     * @throws IllegalStateException if the engagement is not found or summaries not yet computed
      */
-    public EngagementUpdateDetails resolveUpdateDetails(EngagementRecord engagement) {
+    public EngagementUpdateDetails getUpdateDetails(String engagementId) {
+        EngagementRecord engagement = indexRepository.findById(engagementId)
+            .orElseThrow(() -> new IllegalStateException("Engagement not found: " + engagementId));
+
         TemplateVersion latest = templateProvider.getLatestVersion(engagement.templateId());
-        int currentVersion = engagement.templateVersion();
-        int latestVersion = latest.version();
 
-        // Collapsed summary: direct diff from current → latest
-        TemplateDiff collapsedDiff = diffProvider.computeDiff(
-            engagement.templateId(), currentVersion, latestVersion
-        );
-        ChangeSummary collapsedSummary = summaryTransformer.transform(collapsedDiff);
+        ChangeSummary collapsedSummary = summaryRepository
+            .findByVersionRange(engagement.templateId(), engagement.templateVersion(), engagement.latestVersion())
+            .orElseThrow(() -> new IllegalStateException(
+                "Summary not yet computed for %s v%d→v%d".formatted(
+                    engagement.templateId(), engagement.templateVersion(), engagement.latestVersion())
+            ));
 
-        // Step-by-step summaries: consecutive diffs for each intermediate version
-        List<ChangeSummary> stepByStepSummaries = new ArrayList<>();
-        List<TemplateVersion> intermediateVersions = templateProvider.getVersionsBetween(
-            engagement.templateId(), currentVersion, latestVersion
-        );
-
-        int previousVersion = currentVersion;
-        for (TemplateVersion version : intermediateVersions) {
-            TemplateDiff stepDiff = diffProvider.computeDiff(
-                engagement.templateId(), previousVersion, version.version()
-            );
-            stepByStepSummaries.add(summaryTransformer.transform(stepDiff));
-            previousVersion = version.version();
-        }
+        List<ChangeSummary> stepByStepSummaries = summaryRepository
+            .findStepSummaries(engagement.templateId(), engagement.templateVersion(), engagement.latestVersion());
 
         var freshness = new EngagementUpdateDetails.Freshness(
             Instant.now(),
@@ -132,11 +76,80 @@ public class UpdateStateResolver {
 
         return new EngagementUpdateDetails(
             engagement.engagementId(),
-            currentVersion,
-            latestVersion,
+            engagement.templateVersion(),
+            engagement.latestVersion(),
             collapsedSummary,
             stepByStepSummaries,
             freshness
+        );
+    }
+
+    /**
+     * Processes a user's decision to apply or decline a template update.
+     *
+     * @param engagementId the engagement being acted on
+     * @param decision     the user's decision
+     * @return response confirming the outcome
+     * @throws IllegalStateException if engagement not found or targetVersion is stale
+     */
+    public UpdateDecisionResponse processDecision(String engagementId, UpdateDecision decision) {
+        EngagementRecord engagement = indexRepository.findById(engagementId)
+            .orElseThrow(() -> new IllegalStateException("Engagement not found: " + engagementId));
+
+        if (decision.targetVersion() != engagement.latestVersion()) {
+            throw new IllegalStateException(
+                "Stale decision: target v%d but latest is v%d".formatted(
+                    decision.targetVersion(), engagement.latestVersion())
+            );
+        }
+
+        int previousVersion = engagement.templateVersion();
+
+        if (decision.decision() == DecisionType.APPLY) {
+            indexRepository.updateState(
+                engagementId,
+                decision.targetVersion(),
+                UpdateStatus.UP_TO_DATE,
+                decision.targetVersion(),
+                null,
+                false
+            );
+            return new UpdateDecisionResponse(
+                engagementId, DecisionType.APPLY, previousVersion,
+                decision.targetVersion(), DecisionStatus.PROCESSING
+            );
+        } else {
+            indexRepository.updateState(
+                engagementId,
+                engagement.templateVersion(),
+                UpdateStatus.DECLINED,
+                engagement.latestVersion(),
+                decision.targetVersion(),
+                engagement.summaryAvailable()
+            );
+            return new UpdateDecisionResponse(
+                engagementId, DecisionType.DECLINE, previousVersion,
+                decision.targetVersion(), DecisionStatus.ACCEPTED
+            );
+        }
+    }
+
+    private EngagementUpdateSummary toSummary(EngagementRecord engagement) {
+        TemplateVersion latest = templateProvider.getLatestVersion(engagement.templateId());
+        int pendingCount = engagement.latestVersion() - engagement.templateVersion();
+
+        return new EngagementUpdateSummary(
+            engagement.engagementId(),
+            engagement.name(),
+            engagement.templateId(),
+            latest.displayName(),
+            engagement.templateVersion(),
+            engagement.latestVersion(),
+            engagement.status(),
+            Math.max(0, pendingCount),
+            engagement.summaryAvailable(),
+            Instant.now(),
+            engagement.declinedVersion()
         );
     }
 }

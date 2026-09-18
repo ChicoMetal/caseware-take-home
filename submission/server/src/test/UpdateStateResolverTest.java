@@ -1,203 +1,260 @@
 package test;
 
 import domain.model.*;
-import domain.port.DiffSummaryTransformer;
-import domain.port.TemplateDiffProvider;
+import domain.port.EngagementIndexRepository;
 import domain.port.TemplateVersionProvider;
+import domain.port.UpdateSummaryRepository;
 import domain.service.UpdateStateResolver;
 
 import java.time.Instant;
-import java.util.List;
+import java.util.*;
 
 import static java.util.Collections.emptyList;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import org.junit.jupiter.api.Test;
 
 /**
- * Focused tests for UpdateStateResolver.
- * Ports are stubbed to isolate domain logic.
+ * Tests for UpdateStateResolver — the read-side query service.
+ * Reads pre-materialized state from the index and pre-computed summaries from the store.
  */
 public class UpdateStateResolverTest {
 
     private static final Instant NOW = Instant.parse("2026-08-18T13:00:00Z");
 
-    /**
-     * Engagement at v5, latest is v5 -> UP_TO_DATE, no diffs invoked.
-     */
+    // --- Listing tests ---
+
     @Test
-    void testEngagementUpToDate() {
-        var engagement = new EngagementRecord("ENG-1001", "FIRM-001", "Northstar Manufacturing 2026", "AUDIT-CA", 5);
-        var latestVersion = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
+    void testListEngagementsReturnsPreMaterializedState() {
+        var eng1 = record("ENG-1", "FIRM-1", "Corp A", "AUDIT-CA", 5, 5, UpdateStatus.UP_TO_DATE, null, false);
+        var eng2 = record("ENG-2", "FIRM-1", "Corp B", "AUDIT-CA", 4, 5, UpdateStatus.PENDING, null, true);
+        var eng3 = record("ENG-3", "FIRM-1", "Corp C", "AUDIT-CA", 4, 5, UpdateStatus.DECLINED, 5, true);
+        var latest = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
 
-        // Diff provider should never be called for up-to-date engagements
-        TemplateDiffProvider diffProvider = (templateId, from, to) -> {
-            throw new AssertionError("Diff provider should not be called for up-to-date engagement");
-        };
-        DiffSummaryTransformer transformer = (diff) -> {
-            throw new AssertionError("Transformer should not be called for up-to-date engagement");
-        };
-        TemplateVersionProvider templateProvider = stubTemplateProvider(latestVersion, emptyList());
+        var resolver = new UpdateStateResolver(
+            stubIndexRepository(List.of(eng1, eng2, eng3)),
+            stubTemplateProvider(latest),
+            emptySummaryRepository()
+        );
 
-        var resolver = new UpdateStateResolver(diffProvider, transformer, templateProvider);
-        EngagementUpdateSummary result = resolver.resolveUpdateState(engagement, null);
+        List<EngagementUpdateSummary> results = resolver.listEngagementUpdates("FIRM-1");
 
-        assertEquals(UpdateStatus.UP_TO_DATE, result.status(), "status");
-        assertEquals(0, result.pendingUpdateCount(), "pendingUpdateCount");
-        assertEquals(5, result.currentVersion(), "currentVersion");
-        assertEquals(5, result.latestVersion(), "latestVersion");
-        assertEquals(false, result.summaryAvailable(), "summaryAvailable");
+        assertEquals(3, results.size(), "count");
+
+        assertEquals(UpdateStatus.UP_TO_DATE, results.get(0).status());
+        assertEquals(0, results.get(0).pendingUpdateCount());
+        assertFalse(results.get(0).summaryAvailable());
+
+        assertEquals(UpdateStatus.PENDING, results.get(1).status());
+        assertEquals(1, results.get(1).pendingUpdateCount());
+        assertTrue(results.get(1).summaryAvailable());
+
+        assertEquals(UpdateStatus.DECLINED, results.get(2).status());
+        assertEquals(5, results.get(2).declinedVersion());
     }
 
-    /**
-     * Engagement at v4, latest is v5 -> PENDING with 1 update.
-     * resolveUpdateDetails produces 1 collapsed summary and 1 step-by-step entry.
-     */
     @Test
-    void testEngagementOneVersionBehind() {
-        var engagement = new EngagementRecord("ENG-1002", "FIRM-001", "Maple Ridge Foods 2026", "AUDIT-CA", 4);
-        var latestVersion = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
-        var v5 = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
+    void testListEngagementsShowsComputingState() {
+        var eng = record("ENG-4", "FIRM-1", "Corp D", "AUDIT-CA", 4, 5, UpdateStatus.COMPUTING, null, false);
+        var latest = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
 
-        var collapsedDiff = new TemplateDiff("AUDIT-CA", 4, 5, NOW, List.of(
-            new DiffOperation("replace", "/sections/materiality/guidance/thresholdPercent", null, 4.5, 4.0)
-        ));
-        TemplateDiffProvider diffProvider = (templateId, from, to) -> {
-            if (from == 4 && to == 5) return collapsedDiff;
-            throw new AssertionError("Unexpected diff request: " + from + " -> " + to);
-        };
+        var resolver = new UpdateStateResolver(
+            stubIndexRepository(List.of(eng)),
+            stubTemplateProvider(latest),
+            emptySummaryRepository()
+        );
 
-        var stubSummary = new ChangeSummary(4, 5, NOW, List.of(), 1);
-        DiffSummaryTransformer transformer = (diff) -> stubSummary;
-        TemplateVersionProvider templateProvider = stubTemplateProvider(latestVersion, List.of(v5));
-
-        var resolver = new UpdateStateResolver(diffProvider, transformer, templateProvider);
-
-        // Test state resolution
-        EngagementUpdateSummary state = resolver.resolveUpdateState(engagement, null);
-        assertEquals(UpdateStatus.PENDING, state.status(), "status");
-        assertEquals(1, state.pendingUpdateCount(), "pendingUpdateCount");
-
-        // Test detail resolution
-        EngagementUpdateDetails details = resolver.resolveUpdateDetails(engagement);
-        assertEquals(4, details.currentVersion(), "currentVersion");
-        assertEquals(5, details.latestVersion(), "latestVersion");
-        assertNotNull(details.collapsedSummary(), "collapsedSummary");
-        assertEquals(1, details.stepByStepSummaries().size(), "stepByStep size");
-        assertNotNull(details.freshness(), "freshness");
-        assertNotNull(details.freshness().computedAt(), "freshness.computedAt");
-        assertEquals(NOW, details.freshness().templatePublishedAt(), "freshness.templatePublishedAt");
+        List<EngagementUpdateSummary> results = resolver.listEngagementUpdates("FIRM-1");
+        assertEquals(UpdateStatus.COMPUTING, results.get(0).status());
+        assertFalse(results.get(0).summaryAvailable());
     }
 
-    /**
-     * Engagement at v3, latest is v5 -> PENDING with 2 updates.
-     * resolveUpdateDetails produces 1 collapsed summary (v3->v5) and 2 step-by-step entries.
-     */
-    @Test
-    void testEngagementTwoVersionsBehind() {
-        var engagement = new EngagementRecord("ENG-1003", "FIRM-001", "Harbourview Logistics 2026", "AUDIT-CA", 3);
-        var latestVersion = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
-        var v4 = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 4, Instant.parse("2026-07-07T13:00:00Z"));
-        var v5 = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
+    // --- Detail tests ---
 
-        TemplateDiffProvider diffProvider = (templateId, from, to) -> new TemplateDiff(
-            templateId, from, to, NOW, List.of(
-                new DiffOperation("add", "/sections/planning/questions/7", null, null, null)
+    @Test
+    void testGetUpdateDetailsReadsFromStore() {
+        var eng = record("ENG-5", "FIRM-1", "Corp E", "AUDIT-CA", 3, 5, UpdateStatus.PENDING, null, true);
+        var latest = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
+        var collapsed = new ChangeSummary(3, 5, NOW, List.of(), 2);
+        var step1 = new ChangeSummary(3, 4, NOW, List.of(), 1);
+        var step2 = new ChangeSummary(4, 5, NOW, List.of(), 1);
+
+        var resolver = new UpdateStateResolver(
+            stubIndexRepository(List.of(eng)),
+            stubTemplateProvider(latest),
+            stubSummaryRepository(
+                Map.of("AUDIT-CA:3:5", collapsed),
+                Map.of("AUDIT-CA:3:5", List.of(step1, step2))
             )
         );
 
-        DiffSummaryTransformer transformer = (diff) -> new ChangeSummary(
-            diff.fromVersion(), diff.toVersion(), diff.generatedAt(), List.of(), diff.changes().size()
+        EngagementUpdateDetails details = resolver.getUpdateDetails("ENG-5");
+        assertEquals(3, details.currentVersion());
+        assertEquals(5, details.latestVersion());
+        assertEquals(3, details.collapsedSummary().fromVersion());
+        assertEquals(5, details.collapsedSummary().toVersion());
+        assertEquals(2, details.stepByStepSummaries().size());
+        assertNotNull(details.freshness());
+    }
+
+    @Test
+    void testGetUpdateDetailsThrowsWhenSummaryMissing() {
+        var eng = record("ENG-6", "FIRM-1", "Corp F", "AUDIT-CA", 4, 5, UpdateStatus.COMPUTING, null, false);
+        var latest = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
+
+        var resolver = new UpdateStateResolver(
+            stubIndexRepository(List.of(eng)),
+            stubTemplateProvider(latest),
+            emptySummaryRepository()
         );
-        TemplateVersionProvider templateProvider = stubTemplateProvider(latestVersion, List.of(v4, v5));
 
-        var resolver = new UpdateStateResolver(diffProvider, transformer, templateProvider);
-
-        // Test state resolution
-        EngagementUpdateSummary state = resolver.resolveUpdateState(engagement, null);
-        assertEquals(UpdateStatus.PENDING, state.status(), "status");
-        assertEquals(2, state.pendingUpdateCount(), "pendingUpdateCount");
-
-        // Test detail resolution
-        EngagementUpdateDetails details = resolver.resolveUpdateDetails(engagement);
-        assertEquals(3, details.currentVersion(), "currentVersion");
-        assertEquals(5, details.latestVersion(), "latestVersion");
-
-        // Collapsed: v3->v5
-        assertEquals(3, details.collapsedSummary().fromVersion(), "collapsed fromVersion");
-        assertEquals(5, details.collapsedSummary().toVersion(), "collapsed toVersion");
-
-        // Step-by-step: v3->v4, v4->v5
-        assertEquals(2, details.stepByStepSummaries().size(), "stepByStep size");
-        assertEquals(3, details.stepByStepSummaries().get(0).fromVersion(), "step[0] fromVersion");
-        assertEquals(4, details.stepByStepSummaries().get(0).toVersion(), "step[0] toVersion");
-        assertEquals(4, details.stepByStepSummaries().get(1).fromVersion(), "step[1] fromVersion");
-        assertEquals(5, details.stepByStepSummaries().get(1).toVersion(), "step[1] toVersion");
-        assertNotNull(details.freshness(), "freshness");
+        assertThrows(IllegalStateException.class, () -> resolver.getUpdateDetails("ENG-6"));
     }
 
-    /**
-     * Engagement at v4, latest v5, declined v5 -> DECLINED.
-     */
+    // --- Decision tests ---
+
     @Test
-    void testDeclinedEngagementStaysDeclined() {
-        var engagement = new EngagementRecord("ENG-2001", "FIRM-001", "Declined Corp 2026", "AUDIT-CA", 4);
-        var latestVersion = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
+    void testProcessApplyDecision() {
+        var eng = record("ENG-7", "FIRM-1", "Corp G", "AUDIT-CA", 4, 5, UpdateStatus.PENDING, null, true);
+        var latest = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
+        var stateUpdates = new ArrayList<String>();
 
-        TemplateDiffProvider diffProvider = (templateId, from, to) -> {
-            throw new AssertionError("Diff provider should not be called for state resolution");
-        };
-        DiffSummaryTransformer transformer = (diff) -> {
-            throw new AssertionError("Transformer should not be called for state resolution");
-        };
-        TemplateVersionProvider templateProvider = stubTemplateProvider(latestVersion, emptyList());
+        var resolver = new UpdateStateResolver(
+            trackingIndexRepository(List.of(eng), stateUpdates),
+            stubTemplateProvider(latest),
+            emptySummaryRepository()
+        );
 
-        var resolver = new UpdateStateResolver(diffProvider, transformer, templateProvider);
-        EngagementUpdateSummary result = resolver.resolveUpdateState(engagement, 5);
+        var decision = new UpdateDecision(DecisionType.APPLY, 5);
+        UpdateDecisionResponse response = resolver.processDecision("ENG-7", decision);
 
-        assertEquals(UpdateStatus.DECLINED, result.status(), "status");
-        assertEquals(1, result.pendingUpdateCount(), "pendingUpdateCount");
-        assertEquals(true, result.summaryAvailable(), "summaryAvailable");
-        assertEquals(5, result.declinedVersion(), "declinedVersion");
+        assertEquals(DecisionType.APPLY, response.decision());
+        assertEquals(4, response.previousVersion());
+        assertEquals(5, response.targetVersion());
+        assertEquals(DecisionStatus.PROCESSING, response.status());
+        assertTrue(stateUpdates.contains("ENG-7:UP_TO_DATE:5:null:false"), "state updated");
     }
 
-    /**
-     * Engagement at v4, declined v5, but new v6 published -> back to PENDING.
-     */
     @Test
-    void testDeclinedEngagementReturnsToPendingOnNewVersion() {
-        var engagement = new EngagementRecord("ENG-2002", "FIRM-001", "Re-pending Corp 2026", "AUDIT-CA", 4);
-        var latestVersion = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 6, NOW);
+    void testProcessDeclineDecision() {
+        var eng = record("ENG-8", "FIRM-1", "Corp H", "AUDIT-CA", 4, 5, UpdateStatus.PENDING, null, true);
+        var latest = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
+        var stateUpdates = new ArrayList<String>();
 
-        TemplateDiffProvider diffProvider = (templateId, from, to) -> {
-            throw new AssertionError("Diff provider should not be called for state resolution");
-        };
-        DiffSummaryTransformer transformer = (diff) -> {
-            throw new AssertionError("Transformer should not be called for state resolution");
-        };
-        TemplateVersionProvider templateProvider = stubTemplateProvider(latestVersion, emptyList());
+        var resolver = new UpdateStateResolver(
+            trackingIndexRepository(List.of(eng), stateUpdates),
+            stubTemplateProvider(latest),
+            emptySummaryRepository()
+        );
 
-        var resolver = new UpdateStateResolver(diffProvider, transformer, templateProvider);
-        EngagementUpdateSummary result = resolver.resolveUpdateState(engagement, 5);
+        var decision = new UpdateDecision(DecisionType.DECLINE, 5);
+        UpdateDecisionResponse response = resolver.processDecision("ENG-8", decision);
 
-        assertEquals(UpdateStatus.PENDING, result.status(), "status");
-        assertEquals(2, result.pendingUpdateCount(), "pendingUpdateCount");
-        assertEquals(5, result.declinedVersion(), "declinedVersion");
+        assertEquals(DecisionType.DECLINE, response.decision());
+        assertEquals(DecisionStatus.ACCEPTED, response.status());
+        assertTrue(stateUpdates.contains("ENG-8:DECLINED:5:5:true"), "state updated with declinedVersion");
+    }
+
+    @Test
+    void testProcessDecisionRejectsStaleTarget() {
+        var eng = record("ENG-9", "FIRM-1", "Corp I", "AUDIT-CA", 4, 6, UpdateStatus.PENDING, null, true);
+        var latest = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 6, NOW);
+
+        var resolver = new UpdateStateResolver(
+            stubIndexRepository(List.of(eng)),
+            stubTemplateProvider(latest),
+            emptySummaryRepository()
+        );
+
+        var staleDecision = new UpdateDecision(DecisionType.APPLY, 5);
+        assertThrows(IllegalStateException.class, () -> resolver.processDecision("ENG-9", staleDecision));
     }
 
     // --- Helpers ---
 
-    private static TemplateVersionProvider stubTemplateProvider(
-            TemplateVersion latest, List<TemplateVersion> intermediates) {
+    private static EngagementRecord record(String id, String firmId, String name, String templateId,
+                                           int version, int latestVersion, UpdateStatus status,
+                                           Integer declinedVersion, boolean summaryAvailable) {
+        return new EngagementRecord(id, firmId, name, templateId, version, latestVersion,
+            status, declinedVersion, summaryAvailable);
+    }
+
+    private static EngagementIndexRepository stubIndexRepository(List<EngagementRecord> records) {
+        return new EngagementIndexRepository() {
+            @Override
+            public List<EngagementRecord> findByFirmId(String firmId) {
+                return records.stream().filter(e -> e.firmId().equals(firmId)).toList();
+            }
+            @Override
+            public Optional<EngagementRecord> findById(String engagementId) {
+                return records.stream().filter(e -> e.engagementId().equals(engagementId)).findFirst();
+            }
+            @Override
+            public List<EngagementRecord> findByTemplateWithVersionBelow(String templateId, int belowVersion) {
+                return records.stream()
+                    .filter(e -> e.templateId().equals(templateId) && e.templateVersion() < belowVersion).toList();
+            }
+            @Override
+            public void updateState(String engagementId, int templateVersion, UpdateStatus status,
+                                    int latestVersion, Integer declinedVersion, boolean summaryAvailable) {}
+        };
+    }
+
+    private static EngagementIndexRepository trackingIndexRepository(
+            List<EngagementRecord> records, List<String> stateUpdates) {
+        return new EngagementIndexRepository() {
+            @Override
+            public List<EngagementRecord> findByFirmId(String firmId) {
+                return records.stream().filter(e -> e.firmId().equals(firmId)).toList();
+            }
+            @Override
+            public Optional<EngagementRecord> findById(String engagementId) {
+                return records.stream().filter(e -> e.engagementId().equals(engagementId)).findFirst();
+            }
+            @Override
+            public List<EngagementRecord> findByTemplateWithVersionBelow(String templateId, int belowVersion) {
+                return records.stream()
+                    .filter(e -> e.templateId().equals(templateId) && e.templateVersion() < belowVersion).toList();
+            }
+            @Override
+            public void updateState(String engagementId, int templateVersion, UpdateStatus status,
+                                    int latestVersion, Integer declinedVersion, boolean summaryAvailable) {
+                stateUpdates.add(engagementId + ":" + status + ":" + latestVersion + ":" + declinedVersion + ":" + summaryAvailable);
+            }
+        };
+    }
+
+    private static TemplateVersionProvider stubTemplateProvider(TemplateVersion latest) {
         return new TemplateVersionProvider() {
             @Override
-            public TemplateVersion getLatestVersion(String templateId) {
-                return latest;
-            }
-
+            public TemplateVersion getLatestVersion(String templateId) { return latest; }
             @Override
-            public List<TemplateVersion> getVersionsBetween(String templateId, int fromExclusive, int toInclusive) {
-                return intermediates;
+            public List<TemplateVersion> getVersionsBetween(String templateId, int from, int to) { return emptyList(); }
+        };
+    }
+
+    private static UpdateSummaryRepository emptySummaryRepository() {
+        return stubSummaryRepository(Map.of(), Map.of());
+    }
+
+    private static UpdateSummaryRepository stubSummaryRepository(
+            Map<String, ChangeSummary> collapsed, Map<String, List<ChangeSummary>> steps) {
+        return new UpdateSummaryRepository() {
+            @Override
+            public Optional<ChangeSummary> findByVersionRange(String templateId, int from, int to) {
+                return Optional.ofNullable(collapsed.get(templateId + ":" + from + ":" + to));
+            }
+            @Override
+            public List<ChangeSummary> findStepSummaries(String templateId, int from, int to) {
+                return steps.getOrDefault(templateId + ":" + from + ":" + to, emptyList());
+            }
+            @Override
+            public void save(String templateId, ChangeSummary summary) {
+                throw new AssertionError("Resolver should never write summaries");
             }
         };
     }
