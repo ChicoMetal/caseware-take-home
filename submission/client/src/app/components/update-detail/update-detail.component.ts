@@ -1,10 +1,12 @@
-import { Component, ChangeDetectionStrategy, input, output, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, input, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { EngagementUpdateFacade } from '../../facades/engagement-update.facade';
 import {
   EngagementUpdateDetails,
   ChangeSummary,
   ChangeType,
   Impact,
+  DecisionType,
 } from '../../models/engagement-update.models';
 
 /**
@@ -12,7 +14,7 @@ import {
  *
  * Supports two viewing modes: collapsed (all changes across skipped versions
  * merged into one list) and step-by-step (one summary per intermediate version).
- * Emits apply/decline events for the parent to forward to the service.
+ * Handles apply/decline decisions directly via the Facade.
  */
 @Component({
   selector: 'app-update-detail',
@@ -22,24 +24,16 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class UpdateDetailComponent {
-  /** The engagement update data to display. Required input from the parent list component. */
+  private readonly facade = inject(EngagementUpdateFacade);
+
   readonly details = input.required<EngagementUpdateDetails>();
 
-  /** Emitted when the user chooses to apply the pending template update. */
-  readonly apply = output<void>();
-
-  /** Emitted when the user chooses to decline the pending template update. */
-  readonly decline = output<void>();
-
-  /** Toggles between collapsed (false) and step-by-step (true) change views. */
   readonly showStepByStep = signal(false);
 
-  /** Derives the collapsed (all-in-one) summary from the current detail input. */
   readonly activeSummary = computed<ChangeSummary>(
     () => this.details().collapsedSummary
   );
 
-  /** Derives the per-version summaries from the current detail input. */
   readonly stepSummaries = computed<ChangeSummary[]>(
     () => this.details().stepByStepSummaries
   );
@@ -49,14 +43,15 @@ export class UpdateDetailComponent {
   }
 
   onApply(): void {
-    this.apply.emit();
+    const d = this.details();
+    this.facade.submitDecision(d.engagementId, DecisionType.APPLY, d.latestVersion);
   }
 
   onDecline(): void {
-    this.decline.emit();
+    const d = this.details();
+    this.facade.submitDecision(d.engagementId, DecisionType.DECLINE, d.latestVersion);
   }
 
-  /** Maps {@link ChangeType} to a compact diff-style prefix (+, ~, -). */
   changeTypeLabel(type: ChangeType): string {
     switch (type) {
       case ChangeType.ADDED:
@@ -70,7 +65,6 @@ export class UpdateDetailComponent {
     }
   }
 
-  /** Maps {@link Impact} to a bracketed severity label for inline display. */
   impactLabel(impact: Impact): string {
     switch (impact) {
       case Impact.HIGH:

@@ -2,7 +2,7 @@ import { Component, ChangeDetectionStrategy, inject, OnInit, HostListener } from
 import { CommonModule } from '@angular/common';
 import { EngagementUpdateFacade } from '../../facades/engagement-update.facade';
 import { UpdateDetailComponent } from '../update-detail/update-detail.component';
-import { UpdateStatus, DecisionType } from '../../models/engagement-update.models';
+import { UpdateStatus } from '../../models/engagement-update.models';
 
 /**
  * Main list view showing all firm engagements and their template update status.
@@ -31,14 +31,6 @@ export class EngagementListComponent implements OnInit {
 
   selectEngagement(engagementId: string): void {
     this.facade.selectEngagement(engagementId);
-  }
-
-  onApply(engagementId: string, targetVersion: number): void {
-    this.facade.submitDecision(engagementId, DecisionType.APPLY, targetVersion);
-  }
-
-  onDecline(engagementId: string, targetVersion: number): void {
-    this.facade.submitDecision(engagementId, DecisionType.DECLINE, targetVersion);
   }
 
   closeModal(): void {
