@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 520" font-family="Segoe UI, system-ui, sans-serif" font-size="13">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#555"/>
+    </marker>
+    <marker id="arr-purple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#7c3aed"/>
+    </marker>
+    <marker id="arr-teal" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#0d9488"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="780" height="520" fill="#fafafa" rx="8"/>
+
+  <!-- Title -->
+  <text x="390" y="32" text-anchor="middle" font-size="18" font-weight="600" fill="#1e293b">Angular Client — Redux-Inspired Architecture</text>
+
+  <!-- Legend -->
+  <g transform="translate(430, 50)">
+    <line x1="0" y1="8" x2="30" y2="8" stroke="#7c3aed" stroke-width="2" marker-end="url(#arr-purple)"/>
+    <text x="38" y="12" fill="#555" font-size="11">Commands</text>
+    <line x1="130" y1="8" x2="160" y2="8" stroke="#0d9488" stroke-width="2" marker-end="url(#arr-teal)"/>
+    <text x="168" y="12" fill="#555" font-size="11">Data (signals)</text>
+  </g>
+
+  <!-- Components -->
+  <g>
+    <rect x="40" y="90" width="220" height="90" rx="6" fill="#fdf2f8" stroke="#db2777" stroke-width="1.5"/>
+    <text x="50" y="108" font-size="10" font-weight="600" fill="#db2777" letter-spacing="1">COMPONENTS</text>
+    <text x="150" y="132" text-anchor="middle" font-weight="600" fill="#9d174d">EngagementListComponent</text>
+    <text x="150" y="150" text-anchor="middle" font-size="11" fill="#ec4899">Shows all engagements + status</text>
+    <text x="150" y="166" text-anchor="middle" font-size="11" fill="#ec4899">Opens modal on click</text>
+  </g>
+  <g>
+    <rect x="40" y="200" width="220" height="90" rx="6" fill="#fdf2f8" stroke="#db2777" stroke-width="1.5"/>
+    <text x="150" y="228" text-anchor="middle" font-weight="600" fill="#9d174d">UpdateDetailComponent</text>
+    <text x="150" y="246" text-anchor="middle" font-size="11" fill="#ec4899">Change summary (collapsed + steps)</text>
+    <text x="150" y="262" text-anchor="middle" font-size="11" fill="#ec4899">Apply / Decline buttons</text>
+    <text x="150" y="278" text-anchor="middle" font-size="11" fill="#ec4899">Owns its loading state</text>
+  </g>
+
+  <!-- Facade -->
+  <g>
+    <rect x="320" y="130" width="200" height="100" rx="6" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5"/>
+    <text x="330" y="148" font-size="10" font-weight="600" fill="#7c3aed" letter-spacing="1">FACADE</text>
+    <text x="420" y="172" text-anchor="middle" font-weight="600" fill="#5b21b6">EngagementUpdateFacade</text>
+    <text x="420" y="192" text-anchor="middle" font-size="11" fill="#8b5cf6">Public API for components</text>
+    <text x="420" y="208" text-anchor="middle" font-size="11" fill="#8b5cf6">Read-only signals + commands</text>
+    <text x="420" y="224" text-anchor="middle" font-size="11" fill="#8b5cf6">Single point of access</text>
+  </g>
+
+  <!-- Effects -->
+  <g>
+    <rect x="320" y="280" width="200" height="100" rx="6" fill="#ecfdf5" stroke="#0d9488" stroke-width="1.5"/>
+    <text x="330" y="298" font-size="10" font-weight="600" fill="#0d9488" letter-spacing="1">EFFECTS</text>
+    <text x="420" y="322" text-anchor="middle" font-weight="600" fill="#115e59">EngagementUpdateEffects</text>
+    <text x="420" y="340" text-anchor="middle" font-size="11" fill="#14b8a6">API calls + retry with backoff</text>
+    <text x="420" y="356" text-anchor="middle" font-size="11" fill="#14b8a6">Error handling</text>
+    <text x="420" y="372" text-anchor="middle" font-size="11" fill="#14b8a6">Writes results to Store</text>
+  </g>
+
+  <!-- Store -->
+  <g>
+    <rect x="580" y="130" width="160" height="120" rx="6" fill="#fefce8" stroke="#ca8a04" stroke-width="1.5"/>
+    <text x="590" y="148" font-size="10" font-weight="600" fill="#ca8a04" letter-spacing="1">STORE</text>
+    <text x="660" y="172" text-anchor="middle" font-weight="600" fill="#854d0e">Signal State</text>
+    <text x="660" y="192" text-anchor="middle" font-size="11" fill="#a16207">engagements[]</text>
+    <text x="660" y="208" text-anchor="middle" font-size="11" fill="#a16207">selectedDetails</text>
+    <text x="660" y="224" text-anchor="middle" font-size="11" fill="#a16207">loading / detailLoading</text>
+    <text x="660" y="240" text-anchor="middle" font-size="11" fill="#a16207">error</text>
+  </g>
+
+  <!-- API -->
+  <g>
+    <rect x="580" y="310" width="160" height="100" rx="6" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
+    <text x="590" y="328" font-size="10" font-weight="600" fill="#64748b" letter-spacing="1">API</text>
+    <text x="660" y="352" text-anchor="middle" font-weight="600" fill="#475569">EngagementUpdateApi</text>
+    <text x="660" y="372" text-anchor="middle" font-size="11" fill="#94a3b8">Observable-based HTTP</text>
+    <text x="660" y="388" text-anchor="middle" font-size="11" fill="#94a3b8">Simulated latency + errors</text>
+    <text x="660" y="404" text-anchor="middle" font-size="11" fill="#94a3b8">Swap for real HttpClient</text>
+  </g>
+
+  <!-- Fixtures -->
+  <g>
+    <rect x="580" y="440" width="160" height="50" rx="6" fill="#fff" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,2"/>
+    <text x="660" y="462" text-anchor="middle" font-weight="500" fill="#64748b">Fixture Data</text>
+    <text x="660" y="478" text-anchor="middle" font-size="11" fill="#94a3b8">Sample engagements + details</text>
+  </g>
+
+  <!-- Flow description -->
+  <g>
+    <rect x="40" y="420" width="480" height="80" rx="6" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+    <text x="55" y="442" font-size="11" fill="#475569" font-weight="600">Data flow:</text>
+    <text x="55" y="460" font-size="11" fill="#64748b">1. Component calls Facade command (loadEngagements, submitDecision)</text>
+    <text x="55" y="476" font-size="11" fill="#64748b">2. Facade delegates to Effects → Effects calls API → writes result to Store</text>
+    <text x="55" y="492" font-size="11" fill="#64748b">3. Store signals update → Facade exposes them → Component re-renders</text>
+  </g>
+
+  <!-- Arrows: Components → Facade (commands) -->
+  <line x1="260" y1="155" x2="312" y2="170" stroke="#7c3aed" stroke-width="2" marker-end="url(#arr-purple)"/>
+  <line x1="260" y1="245" x2="312" y2="210" stroke="#7c3aed" stroke-width="2" marker-end="url(#arr-purple)"/>
+
+  <!-- Arrows: Facade ← Store (signals/reads) -->
+  <line x1="572" y1="180" x2="528" y2="175" stroke="#0d9488" stroke-width="2" marker-end="url(#arr-teal)"/>
+
+  <!-- Arrows: Facade → Effects (delegates) -->
+  <line x1="420" y1="230" x2="420" y2="272" stroke="#7c3aed" stroke-width="2" marker-end="url(#arr-purple)"/>
+
+  <!-- Arrows: Effects → Store (writes) -->
+  <line x1="520" y1="310" x2="580" y2="245" stroke="#0d9488" stroke-width="2" marker-end="url(#arr-teal)"/>
+
+  <!-- Arrows: Effects → API (calls) -->
+  <line x1="520" y1="350" x2="572" y2="360" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#arr-purple)"/>
+
+  <!-- Arrows: API → Fixtures -->
+  <line x1="660" y1="410" x2="660" y2="432" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#arr)"/>
+
+  <!-- Arrows: Facade → Components (signals/reads) -->
+  <line x1="312" y1="190" x2="260" y2="225" stroke="#0d9488" stroke-width="2" marker-end="url(#arr-teal)"/>
+
+</svg>
