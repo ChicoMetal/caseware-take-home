@@ -58,13 +58,22 @@
 }
 
 @if (detailLoading()) {
-  <p>Loading update details...</p>
+  <div class="modal-backdrop">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-label="Loading update details">
+      <p>Loading update details...</p>
+    </div>
+  </div>
 }
 
 @if (selectedDetails(); as details) {
-  <app-update-detail
-    [details]="details"
-    (apply)="onApply(details.engagementId, details.latestVersion)"
-    (decline)="onDecline(details.engagementId, details.latestVersion)"
-  />
+  <div class="modal-backdrop" (click)="onBackdropClick($event)">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-label="Update details">
+      <button class="modal-close" (click)="closeModal()" aria-label="Close">&times;</button>
+      <app-update-detail
+        [details]="details"
+        (apply)="onApply(details.engagementId, details.latestVersion)"
+        (decline)="onDecline(details.engagementId, details.latestVersion)"
+      />
+    </div>
+  </div>
 }

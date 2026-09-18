@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EngagementUpdateFacade } from '../../facades/engagement-update.facade';
 import { UpdateDetailComponent } from '../update-detail/update-detail.component';
@@ -39,6 +39,23 @@ export class EngagementListComponent implements OnInit {
 
   onDecline(engagementId: string, targetVersion: number): void {
     this.facade.submitDecision(engagementId, DecisionType.DECLINE, targetVersion);
+  }
+
+  closeModal(): void {
+    this.facade.clearSelection();
+  }
+
+  onBackdropClick(event: MouseEvent): void {
+    if ((event.target as HTMLElement).classList.contains('modal-backdrop')) {
+      this.closeModal();
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscapeKey(): void {
+    if (this.selectedDetails()) {
+      this.closeModal();
+    }
   }
 
   retry(): void {
