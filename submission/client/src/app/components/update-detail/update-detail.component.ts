@@ -25,16 +25,17 @@ import {
 export class UpdateDetailComponent {
   private readonly facade = inject(EngagementUpdateFacade);
 
-  readonly details = computed(() => this.facade.selectedDetails()!);
+  readonly loading = this.facade.detailLoading;
+  readonly details = this.facade.selectedDetails;
 
   readonly showStepByStep = signal(false);
 
   readonly activeSummary = computed<ChangeSummary>(
-    () => this.details().collapsedSummary
+    () => this.details()!.collapsedSummary
   );
 
   readonly stepSummaries = computed<ChangeSummary[]>(
-    () => this.details().stepByStepSummaries
+    () => this.details()!.stepByStepSummaries
   );
 
   toggleView(): void {
@@ -42,13 +43,11 @@ export class UpdateDetailComponent {
   }
 
   onApply(): void {
-    const d = this.details();
-    this.facade.submitDecision(d.engagementId, DecisionType.APPLY, d.latestVersion);
+    this.facade.submitDecision(this.details()!.engagementId, DecisionType.APPLY, this.details()!.latestVersion);
   }
 
   onDecline(): void {
-    const d = this.details();
-    this.facade.submitDecision(d.engagementId, DecisionType.DECLINE, d.latestVersion);
+    this.facade.submitDecision(this.details()!.engagementId, DecisionType.DECLINE, this.details()!.latestVersion);
   }
 
   changeTypeLabel(type: ChangeType): string {

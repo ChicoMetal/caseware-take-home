@@ -1,56 +1,53 @@
-<section>
-  <h2>
-    Update Details — v{{ details().currentVersion }} → v{{ details().latestVersion }}
-  </h2>
+<ng-template #sectionList let-sections>
+  @for (section of sections; track section.sectionPath) {
+    <h4>{{ section.sectionDisplayName }}</h4>
+    <ul>
+      @for (change of section.changes; track $index) {
+        <li>
+          <strong>{{ changeTypeLabel(change.type) }}</strong>
+          {{ change.description }}
+          <em>{{ impactLabel(change.impact) }}</em>
+        </li>
+      }
+    </ul>
+  }
+</ng-template>
 
-  <div>
-    <button (click)="toggleView()">
-      {{ showStepByStep() ? 'Show Collapsed View' : 'Show Step-by-Step' }}
-    </button>
-  </div>
+@if (loading()) {
+  <p>Loading update details...</p>
+} @else if (details()) {
+  <section>
+    <h2>
+      Update Details — v{{ details()!.currentVersion }} → v{{ details()!.latestVersion }}
+    </h2>
 
-  @if (!showStepByStep()) {
-    <h3>
-      All changes: v{{ activeSummary().fromVersion }} → v{{ activeSummary().toVersion }}
-      ({{ activeSummary().totalChanges }} changes)
-    </h3>
+    <div>
+      <button (click)="toggleView()">
+        {{ showStepByStep() ? 'Show Collapsed View' : 'Show Step-by-Step' }}
+      </button>
+    </div>
 
-    @for (section of activeSummary().sections; track section.sectionPath) {
-      <h4>{{ section.sectionDisplayName }}</h4>
-      <ul>
-        @for (change of section.changes; track $index) {
-          <li>
-            <strong>{{ changeTypeLabel(change.type) }}</strong>
-            {{ change.description }}
-            <em>{{ impactLabel(change.impact) }}</em>
-          </li>
-        }
-      </ul>
-    }
-  } @else {
-    @for (step of stepSummaries(); track step.fromVersion) {
+    @if (!showStepByStep()) {
       <h3>
-        Version {{ step.fromVersion }} → {{ step.toVersion }}
-        ({{ step.totalChanges }} changes, published {{ step.publishedAt }})
+        All changes: v{{ activeSummary().fromVersion }} → v{{ activeSummary().toVersion }}
+        ({{ activeSummary().totalChanges }} changes)
       </h3>
 
-      @for (section of step.sections; track section.sectionPath) {
-        <h4>{{ section.sectionDisplayName }}</h4>
-        <ul>
-          @for (change of section.changes; track $index) {
-            <li>
-              <strong>{{ changeTypeLabel(change.type) }}</strong>
-              {{ change.description }}
-              <em>{{ impactLabel(change.impact) }}</em>
-            </li>
-          }
-        </ul>
+      <ng-container *ngTemplateOutlet="sectionList; context: { $implicit: activeSummary().sections }" />
+    } @else {
+      @for (step of stepSummaries(); track step.fromVersion) {
+        <h3>
+          Version {{ step.fromVersion }} → {{ step.toVersion }}
+          ({{ step.totalChanges }} changes, published {{ step.publishedAt }})
+        </h3>
+
+        <ng-container *ngTemplateOutlet="sectionList; context: { $implicit: step.sections }" />
       }
     }
-  }
 
-  <div>
-    <button (click)="onApply()">Apply Update to v{{ details().latestVersion }}</button>
-    <button (click)="onDecline()">Decline Update</button>
-  </div>
-</section>
+    <div>
+      <button (click)="onApply()">Apply Update to v{{ details()!.latestVersion }}</button>
+      <button (click)="onDecline()">Decline Update</button>
+    </div>
+  </section>
+}
