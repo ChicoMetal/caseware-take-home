@@ -7,7 +7,8 @@ The system introduces an **event-driven update tracking layer** between the exis
 ### Components
 
 - **Engagement-Template Index** — A lightweight read-optimized table storing `(engagementId, firmId, templateId, currentVersion)` for every engagement. Populated via events on engagement creation and update decisions; existing engagements are backfilled through a one-time batch process.
-- **Template Update Service** — Reacts to template publication events. Queries the index for affected engagements, invokes the existing diff tool for each distinct version gap, transforms raw diffs into human-readable summaries, and stores the results.
+- **Template Update Processor (Write Side)** — Reacts to template publication events. Queries the index for affected engagements, invokes the existing diff tool for each distinct version gap, transforms raw diffs into human-readable summaries, stores the results, and materializes each engagement's state (status, latestVersion, declinedVersion, summaryAvailable) in the index.
+- **Update State Resolver (Read Side)** — Serves client queries. Lists engagement states (pure index read), retrieves pre-computed summaries from the store, and processes user decisions (apply/decline) with optimistic concurrency on `targetVersion`.
 - **Update Summary Store** — Caches pre-computed summaries keyed by `(templateId, fromVersion, toVersion)`. Shared across all firms since templates are identical for everyone.
 - **REST API** — Serves the Angular client with engagement update state, change summaries, and decision endpoints.
 - **Angular Client** — Displays engagement update status, presents human-readable change summaries, and collects apply/decline decisions.
@@ -106,7 +107,7 @@ The raw-to-human transformation is performed **server-side**, inside the `RuleBa
 
 1. **Domain models** — Records and enums representing templates, engagements, diffs, and summaries.
 2. **Port interfaces** — Boundaries for external systems: diff tool, engagement index, template version provider, summary transformer.
-3. **Domain service** — `UpdateStateResolver` orchestrates state resolution and detail retrieval through ports.
+3. **Domain services (CQRS)** — `TemplateUpdateProcessor` (write side) computes summaries and materializes state at event time. `UpdateStateResolver` (read side) reads pre-materialized state and handles decisions.
 4. **Adapter** — `RuleBasedDiffSummaryTransformer` implements the deterministic diff-to-summary transformation.
 5. **Angular models** — TypeScript interfaces mirroring the API contract.
 6. **Angular API layer** — Observable-based HTTP simulation with configurable failure rate and latency. Returns `Observable<T>` using `structuredClone()` to prevent fixture mutation across calls.
@@ -118,7 +119,8 @@ The raw-to-human transformation is performed **server-side**, inside the `RuleBa
 ## 3. Testing Strategy
 
 **Server (Java):**
-- `UpdateStateResolverTest` — Three scenarios: engagement up-to-date (returns `UP_TO_DATE`), one version behind (produces 1 collapsed summary + 1 step), two versions behind (produces 1 collapsed + 2 step-by-step summaries). Ports are mocked to isolate domain logic.
+- `TemplateUpdateProcessorTest` — Write side: publish computes summaries and updates state, preserves declined status when `declinedVersion >= publishedVersion`, supersedes decline on newer version (clears `declinedVersion` to null), reconcile computes missing summaries, reconcile skips existing.
+- `UpdateStateResolverTest` — Read side: list returns pre-materialized state, COMPUTING state surfaced, detail reads from pre-computed store, missing summary throws, APPLY decision updates to UP_TO_DATE, DECLINE records `declinedVersion`, stale `targetVersion` rejected.
 - `RuleBasedDiffSummaryTransformerTest` — Verifies all three operation types (`add`, `replace`, `remove`) produce correct `HumanReadableChange` entries with appropriate types, descriptions, and impact levels. Verifies changes are grouped by section.
 
 **Client (Angular):**

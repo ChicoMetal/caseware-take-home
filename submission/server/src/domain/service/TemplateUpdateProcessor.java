@@ -3,6 +3,7 @@ package domain.service;
 import domain.model.*;
 import domain.port.*;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
@@ -68,12 +69,14 @@ public class TemplateUpdateProcessor {
                 .findByVersionRange(templateId, engagement.templateVersion(), publishedVersion)
                 .isPresent();
 
+            Integer clearedDecline = (newStatus == UpdateStatus.PENDING) ? null : engagement.declinedVersion();
+
             indexRepository.updateState(
                 engagement.engagementId(),
                 engagement.templateVersion(),
                 newStatus,
                 publishedVersion,
-                engagement.declinedVersion(),
+                clearedDecline,
                 summaryAvailable
             );
         }
@@ -142,22 +145,34 @@ public class TemplateUpdateProcessor {
     }
 
     private void computeAndStoreSummaries(String templateId, int fromVersion, int toVersion) {
-        TemplateDiff collapsedDiff = diffProvider.computeDiff(templateId, fromVersion, toVersion);
-        ChangeSummary collapsedSummary = summaryTransformer.transform(collapsedDiff);
-        summaryRepository.save(templateId, collapsedSummary);
-
         List<TemplateVersion> intermediates = templateProvider.getVersionsBetween(
             templateId, fromVersion, toVersion
         );
 
+        // Collapsed summary: direct diff from current → latest
+        TemplateDiff collapsedDiff = diffProvider.computeDiff(templateId, fromVersion, toVersion);
+        ChangeSummary rawCollapsed = summaryTransformer.transform(collapsedDiff);
+        Instant collapsedPublishedAt = intermediates.isEmpty()
+            ? rawCollapsed.publishedAt()
+            : intermediates.get(intermediates.size() - 1).publishedAt();
+        summaryRepository.save(templateId, withPublishedAt(rawCollapsed, collapsedPublishedAt));
+
+        // Step-by-step summaries: consecutive diffs for each intermediate version
         int previousVersion = fromVersion;
         for (TemplateVersion version : intermediates) {
             if (summaryRepository.findByVersionRange(templateId, previousVersion, version.version()).isEmpty()) {
                 TemplateDiff stepDiff = diffProvider.computeDiff(templateId, previousVersion, version.version());
-                ChangeSummary stepSummary = summaryTransformer.transform(stepDiff);
-                summaryRepository.save(templateId, stepSummary);
+                ChangeSummary rawStep = summaryTransformer.transform(stepDiff);
+                summaryRepository.save(templateId, withPublishedAt(rawStep, version.publishedAt()));
             }
             previousVersion = version.version();
         }
+    }
+
+    private static ChangeSummary withPublishedAt(ChangeSummary summary, Instant publishedAt) {
+        return new ChangeSummary(
+            summary.fromVersion(), summary.toVersion(), publishedAt,
+            summary.sections(), summary.totalChanges()
+        );
     }
 }

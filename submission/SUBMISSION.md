@@ -21,7 +21,7 @@
 - **Boilerplate generation:** Java record definitions and Angular interface types were generated from the API contract specification, then reviewed for field name consistency.
 - **Fixture data construction:** The Angular service's hardcoded fixture data was partially generated from the provided sample JSON files, then validated against the expected API response shapes.
 - **Design document structure:** AI helped organize the DESIGN.md sections and ensure the required headings from the exercise skeleton were addressed.
-- **Pattern exploration:** Consulted AI on CQRS pattern applicability for the read-optimized index design, and on event-driven architecture patterns for the template publication flow.
+- **Pattern exploration:** Consulted AI on CQRS pattern applicability for the read-optimized index design, and on event-driven architecture patterns for the template publication flow. The CQRS split into `TemplateUpdateProcessor` (write side) and `UpdateStateResolver` (read side) was refined through iterative review.
 
 ### Where I corrected, rewrote, or ignored AI output
 
@@ -55,7 +55,7 @@
 
 ## What I Would Do Next
 
-1. **Reconciliation job** — Implement the periodic reconciliation that detects index staleness and fills gaps from missed events.
+1. **Persistence adapters** — Implement repository adapters for `EngagementIndexRepository`, `UpdateSummaryRepository`, and `TemplateVersionProvider` against a real database.
 2. **Real HTTP integration** — Replace the Observable-based API simulation with actual `HttpClient` calls. The existing retry/backoff infrastructure and Store architecture carry over unchanged.
 3. **Accessibility refinements** — Expand ARIA support beyond the current modal (which has `aria-modal`, `aria-label`, and Escape/backdrop dismiss). Add focus trapping inside the modal and screen reader announcements for state transitions.
 4. **Pagination and performance** — For firms with hundreds of engagements, add server-side pagination and client-side virtual scrolling.

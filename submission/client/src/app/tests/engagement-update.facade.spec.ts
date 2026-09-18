@@ -127,7 +127,7 @@ describe('EngagementUpdateFacade', () => {
       decision: DecisionType.APPLY,
       previousVersion: 4,
       targetVersion: 5,
-      status: DecisionStatus.ACCEPTED,
+      status: DecisionStatus.PROCESSING,
     };
     apiSpy.submitDecision.and.returnValue(of(response));
     store.setEngagements(MOCK_ENGAGEMENTS);

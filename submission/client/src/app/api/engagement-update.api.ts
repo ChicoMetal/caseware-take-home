@@ -5,6 +5,7 @@ import {
   EngagementUpdateDetails,
   UpdateDecisionRequest,
   UpdateDecisionResponse,
+  DecisionType,
   DecisionStatus,
 } from '../models/engagement-update.models';
 import { FIXTURE_ENGAGEMENTS, FIXTURE_DETAILS } from '../data/engagement-update.fixtures';
@@ -45,13 +46,21 @@ export class EngagementUpdateApi {
     engagementId: string,
     request: UpdateDecisionRequest
   ): Observable<UpdateDecisionResponse> {
-    return this.simulateRequest(() => ({
-      engagementId,
-      decision: request.decision,
-      previousVersion: request.targetVersion - 1,
-      targetVersion: request.targetVersion,
-      status: DecisionStatus.ACCEPTED,
-    }));
+    return this.simulateRequest(() => {
+      const engagement = FIXTURE_ENGAGEMENTS.find(e => e.engagementId === engagementId);
+      const previousVersion = engagement?.currentVersion ?? request.targetVersion - 1;
+      const status = request.decision === DecisionType.APPLY
+        ? DecisionStatus.PROCESSING
+        : DecisionStatus.ACCEPTED;
+
+      return {
+        engagementId,
+        decision: request.decision,
+        previousVersion,
+        targetVersion: request.targetVersion,
+        status,
+      };
+    });
   }
 
   private simulateRequest<T>(factory: () => T): Observable<T> {

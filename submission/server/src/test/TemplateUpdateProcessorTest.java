@@ -94,7 +94,7 @@ public class TemplateUpdateProcessorTest {
         );
 
         processor.processTemplatePublished("AUDIT-CA", 6);
-        assertTrue(stateUpdates.contains("ENG-4:PENDING:6:5:true"), "decline superseded → PENDING");
+        assertTrue(stateUpdates.contains("ENG-4:PENDING:6:null:true"), "decline superseded → PENDING, declinedVersion cleared");
     }
 
     @Test
