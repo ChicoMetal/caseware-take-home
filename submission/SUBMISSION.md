@@ -64,7 +64,7 @@
 - Angular tests (6 facade integration scenarios with retry/backoff): ~30 minutes
 - Consistency audit and bug fixes (5 issues across backend/client): ~25 minutes
 - Submission notes, documentation, and review: ~25 minutes
-- **Total: ~6.5 hours** (over the 3-hour target due to investing in CQRS architecture with proper write/read separation, Redux-inspired client architecture with retry simulation, and a full consistency audit pass)
+- **Total: ~4.5 hours** (over the 3-hour target due to investing in CQRS architecture with proper write/read separation, Redux-inspired client architecture with retry simulation, and a full consistency audit pass)
 
 ## What I Would Do Next
 
