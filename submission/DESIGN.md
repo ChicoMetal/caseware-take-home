@@ -6,20 +6,36 @@ The system introduces an **event-driven update tracking layer** between the exis
 
 ### Components
 
-- **Engagement-Template Index** — A lightweight read-optimized table storing `(engagementId, firmId, templateId, currentVersion)` for every engagement. Populated via events on engagement creation and update decisions; existing engagements are backfilled through a one-time batch process.
-- **Template Update Processor (Write Side)** — Reacts to template publication events. Queries the index for affected engagements, invokes the existing diff tool for each distinct version gap, transforms raw diffs into human-readable summaries, stores the results, and materializes each engagement's state (status, latestVersion, declinedVersion, summaryAvailable) in the index.
-- **Update State Resolver (Read Side)** — Serves client queries. Lists engagement states (pure index read), retrieves pre-computed summaries from the store, and processes user decisions (apply/decline) with optimistic concurrency on `targetVersion`.
-- **Update Summary Store** — Caches pre-computed summaries keyed by `(templateId, fromVersion, toVersion)`. Shared across all firms since templates are identical for everyone.
-- **REST API** — Serves the Angular client with engagement update state, change summaries, and decision endpoints.
-- **Angular Client** — Displays engagement update status, presents human-readable change summaries, and collects apply/decline decisions.
+The architecture follows a CQRS (Command Query Responsibility Segregation) pattern, separating the write path (event processing) from the read path (client queries):
+
+| Component | Role | Backed by |
+|-----------|------|-----------|
+| **Engagement-Template Index** | Lightweight read model storing materialized state per engagement: `(engagementId, firmId, templateId, currentVersion, latestVersion, status, declinedVersion, summaryAvailable)`. | Database table (fast reads) |
+| **Update Summary Store** | Pre-computed human-readable change summaries, keyed by `(templateId, fromVersion, toVersion)`. Shared across all firms — same template gap produces identical summaries. | Database table |
+| **Template Update Processor** *(write side)* | Reacts to template publication events. Computes diffs, transforms them into summaries, stores results, and materializes engagement state in the index. | Domain service |
+| **Update State Resolver** *(read side)* | Serves client queries. Lists engagements (pure index read), retrieves pre-computed summaries, and processes user decisions with optimistic concurrency. | Domain service |
+| **Angular Client** | Presents engagement status, change summaries, and collects apply/decline decisions. Redux-inspired architecture: API → Store → Effects → Facade. | Angular 18+ with signals |
 
 ### Data Flow
 
-1. **Template published →** event triggers the Update Service.
-2. Service queries the Index for engagements with `currentVersion < publishedVersion`.
-3. For each distinct lagging version, the service invokes the existing diff tool and transforms the result into a human-readable summary.
-4. Summaries are stored in the Update Summary Store (one entry per version pair, reused across firms).
-5. Client polls the API; engagements with pending updates are surfaced immediately from the index.
+**Write path — when a template version is published:**
+
+1. Publication event triggers `TemplateUpdateProcessor`.
+2. Processor queries the Index for engagements where `currentVersion < publishedVersion`.
+3. Groups affected engagements by their current version to identify distinct version gaps.
+4. For each distinct gap, invokes the existing diff tool (`TemplateDiffProvider`) to compute both a collapsed diff (current → latest) and step-by-step diffs (each consecutive version).
+5. Transforms each raw diff into a human-readable summary (`DiffSummaryTransformer`) and stores them in the Summary Store.
+6. Updates each engagement's materialized state in the Index: sets `latestVersion`, resolves `status` (PENDING or stays DECLINED if the decline still covers this version), and marks `summaryAvailable = true`.
+
+**Read path — when the client requests data:**
+
+1. **List engagements:** Resolver reads directly from the Index — no computation, pure lookup. Maps each record to the API response shape with display name from `TemplateVersionProvider`.
+2. **View details:** Resolver reads the pre-computed collapsed summary and step-by-step summaries from the Summary Store. If summaries aren't computed yet (status = COMPUTING), throws an error so the client can show a loading state.
+3. **Submit decision:** Resolver validates `targetVersion` matches `latestVersion` (optimistic concurrency). For APPLY: advances `currentVersion` to target, sets status to UP_TO_DATE. For DECLINE: records `declinedVersion`, sets status to DECLINED. Both update the Index in a single atomic write.
+
+**Reconciliation — safety net for missed events:**
+
+A periodic job calls `TemplateUpdateProcessor.reconcile()`, which scans for engagements with missing summaries and computes them. This ensures eventual consistency even if a publication event is lost.
 
 ### Client / Server Boundary
 

@@ -22,6 +22,7 @@
 - **Fixture data construction:** The Angular service's hardcoded fixture data was partially generated from the provided sample JSON files, then validated against the expected API response shapes.
 - **Design document structure:** AI helped organize the DESIGN.md sections and ensure the required headings from the exercise skeleton were addressed.
 - **Pattern exploration:** Consulted AI on CQRS pattern applicability for the read-optimized index design, and on event-driven architecture patterns for the template publication flow. The CQRS split into `TemplateUpdateProcessor` (write side) and `UpdateStateResolver` (read side) was refined through iterative review.
+- **Consistency audit:** Used AI in a reviewer role to systematically audit backend/client contract alignment after the CQRS refactor. The audit compared Java record fields against TypeScript interfaces, verified response shapes between services, and checked that business rules (decline supersession, decision status codes) were consistent across layers. This surfaced 5 issues: 2 medium bugs (publishedAt timestamp sourced from computation time instead of template publish time, declinedVersion not cleared when a newer version supersedes a decline) and 3 low-severity mismatches (APPLY returning wrong status code, incorrect previousVersion in fixture, naming difference). All were fixed except the naming difference, which was an intentional domain vs DTO distinction.
 
 ### Where I corrected, rewrote, or ignored AI output
 
@@ -29,6 +30,13 @@
 - **Domain boundaries:** AI suggested putting the `DiffSummaryTransformer` implementation directly in the domain service package. I restructured to a proper DDD layout with ports (interfaces) in the domain and the implementation as an adapter.
 - **Impact assessment logic:** AI's initial impact rules were too simplistic (all adds = HIGH). I refined the heuristics to distinguish required fields (HIGH) from optional additions (MEDIUM).
 - **Angular state management:** AI initially suggested a flat service with BehaviorSubjects. I restructured into a full Redux-inspired architecture: API (Observable-based), Store (signals), Effects (side effects with retry), and Facade (public component API). This separation was driven by the need to simulate realistic API failure scenarios and demonstrate proper retry handling with exponential backoff.
+- **Fixture data vs API layer separation:** AI initially mixed fixture data directly into the service layer. I separated concerns into a dedicated fixtures file for dummy data and an API service that simulates HTTP behavior (latency, failure rate, `structuredClone` to prevent mutation), so the boundary between real and simulated is a single file swap.
+- **Component data flow:** AI initially passed data between components via `@Input` bindings from parent to child. I corrected this to have the detail component read directly from the Facade/Store, eliminating tight coupling and making the modal self-contained with its own loading state.
+- **Template reuse in Angular:** AI duplicated the section-rendering HTML block across collapsed and step-by-step views. I extracted it into an `ng-template` with `ngTemplateOutlet` and implicit context, avoiding a new component while eliminating the duplication.
+- **Summary computation timing (CQRS violation):** AI placed diff computation and summary generation inside the read-side query path (`resolveUpdateDetails`), meaning every client request would re-invoke the diff tool. I restructured into a proper CQRS split: `TemplateUpdateProcessor` (write side) pre-computes and stores summaries at template publication time, while `UpdateStateResolver` (read side) only reads from the store — no computation at query time.
+- **Status materialization:** AI computed engagement status at request time by comparing versions. I moved status resolution to event time — when a template is published, the processor writes the correct status (`PENDING`, `DECLINED`) into the index, so the read side is a direct lookup.
+- **Missing listing endpoint and decision handling:** AI omitted the engagement listing endpoint and the apply/decline decision flow entirely. I implemented `listEngagementUpdates(firmId)` as a pure index read and `processDecision` with optimistic concurrency checking on `targetVersion`.
+- **Index repository consolidation:** AI generated separate `updateVersion` and `updateState` methods on the index repository. I consolidated into a single `updateState` method that atomically writes all materialized fields (version, status, latestVersion, declinedVersion, summaryAvailable) to prevent partial state updates.
 
 ### How I would guide other engineers using AI on this system
 
@@ -36,6 +44,8 @@
 - **Do not trust AI for domain rules.** Impact assessment, update accumulation logic, and state transitions encode business knowledge that AI cannot reliably infer. Write and test these manually.
 - **Review all generated code for coherence.** AI may produce Java and TypeScript code that are individually correct but use different field names or types. Cross-check every shared type across the design document, server, and client.
 - **Use AI to explore, not to decide.** AI is useful for surfacing design patterns and tradeoffs, but architectural decisions must be justified by the specific constraints of this system (the 1-minute load time, shared templates across firms, non-technical users).
+- **Use AI to explain unfamiliar code.** When onboarding or reviewing code written by others, AI is effective at explaining idioms, patterns, and language-specific constructs (e.g., Java's `computeIfAbsent`, TypeScript's `satisfies never` exhaustiveness check, Angular's `ng-template` with implicit context). This accelerates understanding without requiring the original author's time — but always verify the explanation against the actual behavior.
+- **Use AI to generate unit test scaffolding.** AI can produce test stubs, mock/stub implementations, and assertion structures quickly — especially for ports with multiple methods that need tracking implementations. However, always review that test scenarios cover the actual business rules and edge cases (e.g., decline supersession, optimistic concurrency rejection), not just happy paths. AI tends to test what the code does rather than what it should do.
 
 ### Where AI should not be trusted in this domain
 
@@ -46,12 +56,15 @@
 ## Approximate Time Spent
 
 - Design document and architecture decisions: ~50 minutes
-- Java domain implementation (models, ports, service, adapter): ~60 minutes
-- Java tests: ~20 minutes
-- Angular implementation (models, API simulation, Store, Effects, Facade, components): ~90 minutes
+- Java domain implementation (models, ports, services, adapter): ~80 minutes
+- Java CQRS refactor (TemplateUpdateProcessor + UpdateStateResolver rewrite): ~40 minutes
+- Java tests (processor + resolver): ~30 minutes
+- Angular implementation (models, fixtures, API, Store, Effects, Facade, components): ~90 minutes
+- Angular refactors (modal consolidation, template extraction, loading state): ~20 minutes
 - Angular tests (6 facade integration scenarios with retry/backoff): ~30 minutes
-- Submission notes and review: ~20 minutes
-- **Total: ~4.5 hours** (over the 3-hour target due to investing in the Redux-inspired architecture with retry simulation and the DDD port/adapter structure on the server)
+- Consistency audit and bug fixes (5 issues across backend/client): ~25 minutes
+- Submission notes, documentation, and review: ~25 minutes
+- **Total: ~6.5 hours** (over the 3-hour target due to investing in CQRS architecture with proper write/read separation, Redux-inspired client architecture with retry simulation, and a full consistency audit pass)
 
 ## What I Would Do Next
 
