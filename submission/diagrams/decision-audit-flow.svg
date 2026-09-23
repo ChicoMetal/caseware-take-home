@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 680" font-family="Segoe UI, system-ui, sans-serif" font-size="13">
+  <defs>
+    <marker id="a" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#555"/>
+    </marker>
+    <marker id="a-red" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#dc2626"/>
+    </marker>
+    <marker id="a-grn" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#16a34a"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="960" height="680" fill="#fafafa" rx="8"/>
+
+  <!-- Title -->
+  <text x="480" y="34" text-anchor="middle" font-size="18" font-weight="700" fill="#1e293b">Decision Flow — Security Checkpoints &amp; Audit Trail</text>
+  <text x="480" y="54" text-anchor="middle" font-size="12" fill="#64748b">POST /api/firms/{firmId}/engagements/{id}/decision</text>
+
+  <!-- Legend -->
+  <g transform="translate(560, 68)">
+    <circle cx="6" cy="6" r="6" fill="#dc2626"/>
+    <text x="18" y="11" fill="#555" font-size="11">Security gate (rejects on failure)</text>
+    <circle cx="256" cy="6" r="6" fill="#16a34a"/>
+    <text x="268" y="11" fill="#555" font-size="11">Business logic</text>
+  </g>
+
+  <!-- ═══ FLOW STEPS ═══ -->
+
+  <!-- Step 1: API Gateway -->
+  <rect x="80" y="100" width="800" height="64" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+  <circle cx="104" cy="132" r="14" fill="#dc2626"/>
+  <text x="104" y="137" text-anchor="middle" font-size="12" fill="#fff" font-weight="700">1</text>
+  <text x="135" y="124" font-weight="600" fill="#991b1b">API Gateway — Token Validation</text>
+  <text x="135" y="142" font-size="11" fill="#dc2626">JWT signature verified, expiry checked, claims extracted into UserContext(userId, firmId, role)</text>
+  <text x="135" y="156" font-size="10" fill="#94a3b8">Reject: 401 Unauthorized</text>
+
+  <!-- Arrow down -->
+  <line x1="480" y1="164" x2="480" y2="186" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Step 2: Tenant Isolation -->
+  <rect x="80" y="194" width="800" height="64" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+  <circle cx="104" cy="226" r="14" fill="#dc2626"/>
+  <text x="104" y="231" text-anchor="middle" font-size="12" fill="#fff" font-weight="700">2</text>
+  <text x="135" y="218" font-weight="600" fill="#991b1b">Tenant Isolation — firmId Boundary</text>
+  <text x="135" y="236" font-size="11" fill="#dc2626">findById(user.firmId(), engagementId) — returns empty if engagement belongs to another firm</text>
+  <text x="135" y="250" font-size="10" fill="#94a3b8">Reject: "Engagement not found" (generic, no ID leak)</text>
+
+  <!-- Arrow down -->
+  <line x1="480" y1="258" x2="480" y2="280" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Step 3: Role Authorization -->
+  <rect x="80" y="288" width="800" height="64" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+  <circle cx="104" cy="320" r="14" fill="#dc2626"/>
+  <text x="104" y="325" text-anchor="middle" font-size="12" fill="#fff" font-weight="700">3</text>
+  <text x="135" y="312" font-weight="600" fill="#991b1b">Role Authorization — ADMIN Required</text>
+  <text x="135" y="330" font-size="11" fill="#dc2626">user.role() != UserRole.ADMIN throws SecurityException</text>
+  <text x="135" y="344" font-size="10" fill="#94a3b8">Reject: "Insufficient permissions" (no userId in error)</text>
+
+  <!-- Arrow down -->
+  <line x1="480" y1="352" x2="480" y2="374" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Step 4: Input Validation -->
+  <rect x="80" y="382" width="800" height="52" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+  <circle cx="104" cy="408" r="14" fill="#dc2626"/>
+  <text x="104" y="413" text-anchor="middle" font-size="12" fill="#fff" font-weight="700">4</text>
+  <text x="135" y="402" font-weight="600" fill="#991b1b">Input Validation</text>
+  <text x="135" y="420" font-size="11" fill="#dc2626">Objects.requireNonNull(user, engagementId, decision) + targetVersion &gt; 0</text>
+
+  <!-- Arrow down -->
+  <line x1="480" y1="434" x2="480" y2="456" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Step 5: Optimistic Concurrency -->
+  <rect x="80" y="464" width="800" height="52" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+  <circle cx="104" cy="490" r="14" fill="#16a34a"/>
+  <text x="104" y="495" text-anchor="middle" font-size="12" fill="#fff" font-weight="700">5</text>
+  <text x="135" y="484" font-weight="600" fill="#166534">Optimistic Concurrency Check</text>
+  <text x="135" y="502" font-size="11" fill="#16a34a">decision.targetVersion() == engagement.latestVersion() — prevents acting on stale view</text>
+
+  <!-- Arrow down -->
+  <line x1="480" y1="516" x2="480" y2="538" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Step 6: State Mutation -->
+  <rect x="80" y="546" width="380" height="52" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+  <circle cx="104" cy="572" r="14" fill="#16a34a"/>
+  <text x="104" y="577" text-anchor="middle" font-size="12" fill="#fff" font-weight="700">6</text>
+  <text x="135" y="566" font-weight="600" fill="#166534">State Mutation</text>
+  <text x="135" y="584" font-size="11" fill="#16a34a">indexRepository.updateState(firmId, ...)</text>
+
+  <!-- Step 7: Audit Log -->
+  <rect x="500" y="546" width="380" height="52" rx="8" fill="#fefce8" stroke="#ca8a04" stroke-width="1.5"/>
+  <circle cx="524" cy="572" r="14" fill="#ca8a04"/>
+  <text x="524" y="577" text-anchor="middle" font-size="12" fill="#fff" font-weight="700">7</text>
+  <text x="555" y="566" font-weight="600" fill="#854d0e">Audit Trail — DecisionAuditLog</text>
+  <text x="555" y="584" font-size="11" fill="#a16207">record(engagementId, decidedBy, decision, ...)</text>
+
+  <!-- Arrow: 6 → 7 -->
+  <line x1="460" y1="572" x2="492" y2="572" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Step 8: Response -->
+  <rect x="80" y="618" width="800" height="46" rx="8" fill="#fff" stroke="#64748b" stroke-width="1.5"/>
+  <circle cx="104" cy="641" r="14" fill="#64748b"/>
+  <text x="104" y="646" text-anchor="middle" font-size="12" fill="#fff" font-weight="700">8</text>
+  <text x="135" y="636" font-weight="600" fill="#334155">Response</text>
+  <text x="135" y="652" font-size="11" fill="#64748b">UpdateDecisionResponse(engagementId, decidedBy, decision, previousVersion, targetVersion, status)</text>
+
+  <!-- Arrow: 7 → 8 -->
+  <line x1="690" y1="598" x2="690" y2="610" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Arrow: 6 → 8 -->
+  <line x1="270" y1="598" x2="270" y2="610" stroke="#555" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Side labels: reject paths -->
+  <g opacity="0.7">
+    <!-- Step 1 reject -->
+    <line x1="880" y1="132" x2="920" y2="132" stroke="#dc2626" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#a-red)"/>
+    <text x="928" y="136" font-size="10" fill="#dc2626">401</text>
+
+    <!-- Step 2 reject -->
+    <line x1="880" y1="226" x2="920" y2="226" stroke="#dc2626" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#a-red)"/>
+    <text x="928" y="230" font-size="10" fill="#dc2626">404</text>
+
+    <!-- Step 3 reject -->
+    <line x1="880" y1="320" x2="920" y2="320" stroke="#dc2626" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#a-red)"/>
+    <text x="928" y="324" font-size="10" fill="#dc2626">403</text>
+
+    <!-- Step 5 reject -->
+    <line x1="880" y1="490" x2="920" y2="490" stroke="#dc2626" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#a-red)"/>
+    <text x="928" y="494" font-size="10" fill="#dc2626">409</text>
+  </g>
+</svg>
