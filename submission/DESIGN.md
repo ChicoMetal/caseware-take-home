@@ -4,7 +4,9 @@
 
 The system introduces an **event-driven update tracking layer** between the existing Template DB and Engagement DB, avoiding the ~1 minute per-engagement loading constraint entirely.
 
-> See [Backend CQRS Architecture diagram](diagrams/architecture.svg) and [Angular Client Architecture diagram](diagrams/client-architecture.svg).
+![Backend CQRS Architecture](diagrams/architecture.svg)
+
+![Angular Client Architecture](diagrams/client-architecture.svg)
 
 ### Components
 
@@ -139,7 +141,9 @@ The raw-to-human transformation is performed **server-side**, inside the `RuleBa
 
 ### Security
 
-> See [Security Architecture diagram](diagrams/security-architecture.svg) for multi-tenancy boundaries and port isolation, and [Decision Audit Flow diagram](diagrams/decision-audit-flow.svg) for the full security checkpoint sequence on the decision endpoint.
+![Security Architecture](diagrams/security-architecture.svg)
+
+![Decision Audit Flow](diagrams/decision-audit-flow.svg)
 
 - **Firm-level data isolation (multi-tenancy):** All API endpoints are scoped under `/api/firms/{firmId}/`, making tenant context explicit at the URL level. The engagement index is partitioned by `firmId` — list queries enter through `findByFirmId(firmId)`, and single-entity lookups through `findById(firmId, engagementId)`, which returns empty if the engagement does not belong to the requesting firm. Cross-firm data leakage is a structural impossibility at the port boundary, not a correctness dependency on application-layer filtering.
 - **Role-based authorization:** A `UserContext` record (`userId`, `firmId`, `role`) is extracted from the authentication token by the infrastructure layer and passed into domain services. The domain enforces access rules directly:
