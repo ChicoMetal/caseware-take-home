@@ -17,6 +17,7 @@ export class EngagementUpdateFacade {
 
   // ── Read-only state (components bind to these) ─────────────────
 
+  readonly activeFirmId = this.store.activeFirmId.asReadonly();
   readonly engagements = this.store.engagements.asReadonly();
   readonly selectedDetails = this.store.selectedDetails.asReadonly();
   readonly loading = this.store.loading.asReadonly();
@@ -30,12 +31,12 @@ export class EngagementUpdateFacade {
     this.effects.loadEngagements(firmId);
   }
 
-  selectEngagement(engagementId: string): void {
-    this.effects.loadDetails(engagementId);
+  selectEngagement(firmId: string, engagementId: string): void {
+    this.effects.loadDetails(firmId, engagementId);
   }
 
-  submitDecision(engagementId: string, decision: DecisionType, targetVersion: number): void {
-    this.effects.submitDecision(engagementId, decision, targetVersion);
+  submitDecision(firmId: string, engagementId: string, decision: DecisionType, targetVersion: number): void {
+    this.effects.submitDecision(firmId, engagementId, decision, targetVersion);
   }
 
   clearSelection(): void {

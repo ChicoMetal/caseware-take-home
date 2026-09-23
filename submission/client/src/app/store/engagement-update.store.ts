@@ -17,6 +17,7 @@ export class EngagementUpdateStore {
 
   // ── Primary state ──────────────────────────────────────────────
 
+  readonly activeFirmId = signal<string>('');
   readonly engagements = signal<EngagementUpdateSummary[]>([]);
   readonly selectedDetails = signal<EngagementUpdateDetails | null>(null);
   readonly loading = signal(false);
@@ -34,6 +35,10 @@ export class EngagementUpdateStore {
   readonly hasError = computed(() => this.error() !== null);
 
   // ── Mutations ──────────────────────────────────────────────────
+
+  setActiveFirmId(firmId: string): void {
+    this.activeFirmId.set(firmId);
+  }
 
   setEngagements(engagements: EngagementUpdateSummary[]): void {
     this.engagements.set(engagements);

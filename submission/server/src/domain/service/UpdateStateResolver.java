@@ -62,7 +62,7 @@ public class UpdateStateResolver {
      */
     public EngagementUpdateDetails getUpdateDetails(UserContext user, String engagementId) {
         EngagementRecord engagement = indexRepository.findById(user.firmId(), engagementId)
-            .orElseThrow(() -> new IllegalStateException("Engagement not found: " + engagementId));
+            .orElseThrow(() -> new IllegalStateException("Engagement not found"));
 
         TemplateVersion latest = templateProvider.getLatestVersion(engagement.templateId());
 

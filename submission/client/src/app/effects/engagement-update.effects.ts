@@ -45,6 +45,7 @@ export class EngagementUpdateEffects {
   private readonly retryConfig = inject(RETRY_CONFIG);
 
   loadEngagements(firmId: string): void {
+    this.store.setActiveFirmId(firmId);
     this.store.setEngagements([]);
     this.store.setLoading(true);
     this.store.setError(null);
@@ -66,12 +67,12 @@ export class EngagementUpdateEffects {
       .subscribe(engagements => this.store.setEngagements(engagements));
   }
 
-  loadDetails(engagementId: string): void {
+  loadDetails(firmId: string, engagementId: string): void {
     this.store.setSelectedDetails(null);
     this.store.setDetailLoading(true);
     this.store.setError(null);
 
-    defer(() => this.api.getEngagementDetails(engagementId))
+    defer(() => this.api.getEngagementDetails(firmId, engagementId))
       .pipe(
         retry({
           count: this.retryConfig.count,
@@ -88,13 +89,13 @@ export class EngagementUpdateEffects {
       .subscribe(details => this.store.setSelectedDetails(details));
   }
 
-  submitDecision(engagementId: string, decision: DecisionType, targetVersion: number): void {
+  submitDecision(firmId: string, engagementId: string, decision: DecisionType, targetVersion: number): void {
     this.store.setLoading(true);
     this.store.setError(null);
 
     const request: UpdateDecisionRequest = { decision, targetVersion };
 
-    defer(() => this.api.submitDecision(engagementId, request))
+    defer(() => this.api.submitDecision(firmId, engagementId, request))
       .pipe(
         retry({
           count: this.retryConfig.count,

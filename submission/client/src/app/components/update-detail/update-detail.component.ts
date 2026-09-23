@@ -43,11 +43,11 @@ export class UpdateDetailComponent {
   }
 
   onApply(): void {
-    this.facade.submitDecision(this.details()!.engagementId, DecisionType.APPLY, this.details()!.latestVersion);
+    this.facade.submitDecision(this.facade.activeFirmId(), this.details()!.engagementId, DecisionType.APPLY, this.details()!.latestVersion);
   }
 
   onDecline(): void {
-    this.facade.submitDecision(this.details()!.engagementId, DecisionType.DECLINE, this.details()!.latestVersion);
+    this.facade.submitDecision(this.facade.activeFirmId(), this.details()!.engagementId, DecisionType.DECLINE, this.details()!.latestVersion);
   }
 
   changeTypeLabel(type: ChangeType): string {

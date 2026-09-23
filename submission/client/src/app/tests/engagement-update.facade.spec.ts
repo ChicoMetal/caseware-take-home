@@ -113,7 +113,7 @@ describe('EngagementUpdateFacade', () => {
   it('should load details when selecting an engagement', fakeAsync(() => {
     apiSpy.getEngagementDetails.and.returnValue(of(MOCK_DETAILS));
 
-    facade.selectEngagement('ENG-TEST-1');
+    facade.selectEngagement('FIRM-01', 'ENG-TEST-1');
     tick();
 
     const details = facade.selectedDetails();
@@ -134,7 +134,7 @@ describe('EngagementUpdateFacade', () => {
     apiSpy.submitDecision.and.returnValue(of(response));
     store.setEngagements(MOCK_ENGAGEMENTS);
 
-    facade.submitDecision('ENG-TEST-1', DecisionType.APPLY, 5);
+    facade.submitDecision('FIRM-01', 'ENG-TEST-1', DecisionType.APPLY, 5);
     tick();
 
     const updated: EngagementUpdateSummary | undefined = facade.engagements()
@@ -160,7 +160,7 @@ describe('EngagementUpdateFacade', () => {
     apiSpy.submitDecision.and.returnValue(of(response));
     store.setEngagements(MOCK_ENGAGEMENTS);
 
-    facade.submitDecision('ENG-TEST-1', DecisionType.DECLINE, 5);
+    facade.submitDecision('FIRM-01', 'ENG-TEST-1', DecisionType.DECLINE, 5);
     tick();
 
     const updated: EngagementUpdateSummary | undefined = facade.engagements()

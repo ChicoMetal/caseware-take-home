@@ -31,7 +31,7 @@ export class EngagementListComponent implements OnInit {
   }
 
   selectEngagement(engagementId: string): void {
-    this.facade.selectEngagement(engagementId);
+    this.facade.selectEngagement(this.firmId, engagementId);
   }
 
   closeModal(): void {

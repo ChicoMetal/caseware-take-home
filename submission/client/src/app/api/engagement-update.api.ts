@@ -31,7 +31,7 @@ export class EngagementUpdateApi {
   }
 
   /** GET /api/firms/{firmId}/engagements/{id}/update-details */
-  getEngagementDetails(engagementId: string): Observable<EngagementUpdateDetails> {
+  getEngagementDetails(firmId: string, engagementId: string): Observable<EngagementUpdateDetails> {
     return this.simulateRequest(() => {
       const details = FIXTURE_DETAILS[engagementId];
       if (!details) {
@@ -43,6 +43,7 @@ export class EngagementUpdateApi {
 
   /** POST /api/firms/{firmId}/engagements/{id}/decision */
   submitDecision(
+    firmId: string,
     engagementId: string,
     request: UpdateDecisionRequest
   ): Observable<UpdateDecisionResponse> {
