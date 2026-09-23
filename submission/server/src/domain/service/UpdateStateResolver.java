@@ -49,12 +49,13 @@ public class UpdateStateResolver {
     /**
      * Retrieves pre-computed change details for an engagement's pending update.
      *
+     * @param firmId       the firm requesting access (tenant isolation)
      * @param engagementId the engagement to query
      * @return detail-level response with both summary views
      * @throws IllegalStateException if the engagement is not found or summaries not yet computed
      */
-    public EngagementUpdateDetails getUpdateDetails(String engagementId) {
-        EngagementRecord engagement = indexRepository.findById(engagementId)
+    public EngagementUpdateDetails getUpdateDetails(String firmId, String engagementId) {
+        EngagementRecord engagement = indexRepository.findById(firmId, engagementId)
             .orElseThrow(() -> new IllegalStateException("Engagement not found: " + engagementId));
 
         TemplateVersion latest = templateProvider.getLatestVersion(engagement.templateId());
@@ -87,13 +88,14 @@ public class UpdateStateResolver {
     /**
      * Processes a user's decision to apply or decline a template update.
      *
+     * @param firmId       the firm requesting access (tenant isolation)
      * @param engagementId the engagement being acted on
      * @param decision     the user's decision
      * @return response confirming the outcome
      * @throws IllegalStateException if engagement not found or targetVersion is stale
      */
-    public UpdateDecisionResponse processDecision(String engagementId, UpdateDecision decision) {
-        EngagementRecord engagement = indexRepository.findById(engagementId)
+    public UpdateDecisionResponse processDecision(String firmId, String engagementId, UpdateDecision decision) {
+        EngagementRecord engagement = indexRepository.findById(firmId, engagementId)
             .orElseThrow(() -> new IllegalStateException("Engagement not found: " + engagementId));
 
         if (decision.targetVersion() != engagement.latestVersion()) {
@@ -140,6 +142,7 @@ public class UpdateStateResolver {
 
         return new EngagementUpdateSummary(
             engagement.engagementId(),
+            engagement.firmId(),
             engagement.name(),
             engagement.templateId(),
             latest.displayName(),

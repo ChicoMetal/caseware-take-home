@@ -40,6 +40,7 @@ export enum Impact {
  */
 export interface EngagementUpdateSummary {
   engagementId: string;
+  firmId: string;
   engagementName: string;
   templateId: string;
   templateDisplayName: string;

@@ -92,7 +92,7 @@ public class UpdateStateResolverTest {
             )
         );
 
-        EngagementUpdateDetails details = resolver.getUpdateDetails("ENG-5");
+        EngagementUpdateDetails details = resolver.getUpdateDetails("FIRM-1", "ENG-5");
         assertEquals(3, details.currentVersion());
         assertEquals(5, details.latestVersion());
         assertEquals(3, details.collapsedSummary().fromVersion());
@@ -112,7 +112,7 @@ public class UpdateStateResolverTest {
             emptySummaryRepository()
         );
 
-        assertThrows(IllegalStateException.class, () -> resolver.getUpdateDetails("ENG-6"));
+        assertThrows(IllegalStateException.class, () -> resolver.getUpdateDetails("FIRM-1", "ENG-6"));
     }
 
     // --- Decision tests ---
@@ -130,7 +130,7 @@ public class UpdateStateResolverTest {
         );
 
         var decision = new UpdateDecision(DecisionType.APPLY, 5);
-        UpdateDecisionResponse response = resolver.processDecision("ENG-7", decision);
+        UpdateDecisionResponse response = resolver.processDecision("FIRM-1", "ENG-7", decision);
 
         assertEquals(DecisionType.APPLY, response.decision());
         assertEquals(4, response.previousVersion());
@@ -152,7 +152,7 @@ public class UpdateStateResolverTest {
         );
 
         var decision = new UpdateDecision(DecisionType.DECLINE, 5);
-        UpdateDecisionResponse response = resolver.processDecision("ENG-8", decision);
+        UpdateDecisionResponse response = resolver.processDecision("FIRM-1", "ENG-8", decision);
 
         assertEquals(DecisionType.DECLINE, response.decision());
         assertEquals(DecisionStatus.ACCEPTED, response.status());
@@ -171,7 +171,7 @@ public class UpdateStateResolverTest {
         );
 
         var staleDecision = new UpdateDecision(DecisionType.APPLY, 5);
-        assertThrows(IllegalStateException.class, () -> resolver.processDecision("ENG-9", staleDecision));
+        assertThrows(IllegalStateException.class, () -> resolver.processDecision("FIRM-1", "ENG-9", staleDecision));
     }
 
     // --- Helpers ---
@@ -190,8 +190,10 @@ public class UpdateStateResolverTest {
                 return records.stream().filter(e -> e.firmId().equals(firmId)).toList();
             }
             @Override
-            public Optional<EngagementRecord> findById(String engagementId) {
-                return records.stream().filter(e -> e.engagementId().equals(engagementId)).findFirst();
+            public Optional<EngagementRecord> findById(String firmId, String engagementId) {
+                return records.stream()
+                    .filter(e -> e.firmId().equals(firmId) && e.engagementId().equals(engagementId))
+                    .findFirst();
             }
             @Override
             public List<EngagementRecord> findByTemplateWithVersionBelow(String templateId, int belowVersion) {
@@ -212,8 +214,10 @@ public class UpdateStateResolverTest {
                 return records.stream().filter(e -> e.firmId().equals(firmId)).toList();
             }
             @Override
-            public Optional<EngagementRecord> findById(String engagementId) {
-                return records.stream().filter(e -> e.engagementId().equals(engagementId)).findFirst();
+            public Optional<EngagementRecord> findById(String firmId, String engagementId) {
+                return records.stream()
+                    .filter(e -> e.firmId().equals(firmId) && e.engagementId().equals(engagementId))
+                    .findFirst();
             }
             @Override
             public List<EngagementRecord> findByTemplateWithVersionBelow(String templateId, int belowVersion) {

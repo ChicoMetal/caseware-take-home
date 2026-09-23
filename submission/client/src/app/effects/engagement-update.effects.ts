@@ -44,12 +44,12 @@ export class EngagementUpdateEffects {
   private readonly store = inject(EngagementUpdateStore);
   private readonly retryConfig = inject(RETRY_CONFIG);
 
-  loadEngagements(): void {
+  loadEngagements(firmId: string): void {
     this.store.setEngagements([]);
     this.store.setLoading(true);
     this.store.setError(null);
 
-    defer(() => this.api.getEngagements())
+    defer(() => this.api.getEngagements(firmId))
       .pipe(
         retry({
           count: this.retryConfig.count,

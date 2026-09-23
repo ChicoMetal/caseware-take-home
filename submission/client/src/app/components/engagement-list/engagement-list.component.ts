@@ -17,6 +17,7 @@ import { UpdateStatus } from '../../models/engagement-update.models';
 })
 export class EngagementListComponent implements OnInit {
   private readonly facade = inject(EngagementUpdateFacade);
+  private readonly firmId = 'FIRM-01';
 
   readonly UpdateStatus = UpdateStatus;
   readonly engagements = this.facade.engagements;
@@ -26,7 +27,7 @@ export class EngagementListComponent implements OnInit {
   readonly error = this.facade.error;
 
   ngOnInit(): void {
-    this.facade.loadEngagements();
+    this.facade.loadEngagements(this.firmId);
   }
 
   selectEngagement(engagementId: string): void {
@@ -52,7 +53,7 @@ export class EngagementListComponent implements OnInit {
 
   retry(): void {
     this.facade.clearError();
-    this.facade.loadEngagements();
+    this.facade.loadEngagements(this.firmId);
   }
 
   statusLabel(status: UpdateStatus): string {

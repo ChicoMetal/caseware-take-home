@@ -26,8 +26,8 @@ export class EngagementUpdateFacade {
 
   // ── Commands ───────────────────────────────────────────────────
 
-  loadEngagements(): void {
-    this.effects.loadEngagements();
+  loadEngagements(firmId: string): void {
+    this.effects.loadEngagements(firmId);
   }
 
   selectEngagement(engagementId: string): void {

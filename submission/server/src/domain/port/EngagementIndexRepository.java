@@ -23,8 +23,9 @@ import java.util.Optional;
  *       affected engagements, then calls {@link #updateState} to materialize the new status,
  *       latestVersion, and summaryAvailable flag for each one.</li>
  *   <li><b>Read side ({@link domain.service.UpdateStateResolver}):</b> Client queries use
- *       {@link #findByFirmId} for the engagement list and {@link #findById} for detail/decision
- *       lookups. Decisions also call {@link #updateState} to record apply/decline outcomes.</li>
+ *       {@link #findByFirmId} for the engagement list and {@link #findById(String, String)} for
+ *       tenant-scoped detail/decision lookups. Decisions also call {@link #updateState} to
+ *       record apply/decline outcomes.</li>
  * </ul>
  */
 public interface EngagementIndexRepository {
@@ -36,10 +37,12 @@ public interface EngagementIndexRepository {
     List<EngagementRecord> findByFirmId(String firmId);
 
     /**
-     * Looks up a single engagement's materialized state.
+     * Looks up a single engagement's materialized state within a firm boundary.
      * Used by the read side for detail retrieval and decision processing.
+     * The firmId parameter enforces tenant isolation at the port level —
+     * callers cannot access engagements belonging to other firms.
      */
-    Optional<EngagementRecord> findById(String engagementId);
+    Optional<EngagementRecord> findById(String firmId, String engagementId);
 
     /**
      * Finds all engagements using a template whose current version is behind a threshold.

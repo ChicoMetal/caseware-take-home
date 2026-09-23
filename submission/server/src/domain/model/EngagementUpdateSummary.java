@@ -11,6 +11,7 @@ import java.time.Instant;
  */
 public record EngagementUpdateSummary(
     String engagementId,
+    String firmId,
     String engagementName,
     String templateId,
     String templateDisplayName,

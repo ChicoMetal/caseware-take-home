@@ -54,4 +54,4 @@ submission/
 ## Key Documents
 
 - **[DESIGN.md](DESIGN.md)** — High-level architecture, API contract, testing strategy, failure modes
-- **[SUBMISSION.md](SUBMISSION.md)** — Assumptions, AI usage details, time breakdown (~6.5h), next steps
+- **[SUBMISSION.md](SUBMISSION.md)** — Assumptions, AI usage details, time breakdown (~4.5h), next steps

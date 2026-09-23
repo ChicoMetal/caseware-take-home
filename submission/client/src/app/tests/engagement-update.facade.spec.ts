@@ -24,6 +24,7 @@ const TEST_RETRY_CONFIG: RetryConfig = {
 const MOCK_ENGAGEMENTS: EngagementUpdateSummary[] = [
   {
     engagementId: 'ENG-TEST-1',
+    firmId: 'FIRM-01',
     engagementName: 'Test Engagement',
     templateId: 'TPL-1',
     templateDisplayName: 'Test Template',
@@ -89,7 +90,7 @@ describe('EngagementUpdateFacade', () => {
   it('should load engagements into the store', fakeAsync(() => {
     apiSpy.getEngagements.and.returnValue(of(MOCK_ENGAGEMENTS));
 
-    facade.loadEngagements();
+    facade.loadEngagements('FIRM-01');
     tick();
 
     expect(facade.engagements().length).toBe(1);
@@ -102,7 +103,7 @@ describe('EngagementUpdateFacade', () => {
       throwError(() => new Error('503 Service Unavailable'))
     );
 
-    facade.loadEngagements();
+    facade.loadEngagements('FIRM-01');
     tick();
 
     expect(facade.error()).toContain('Failed to load engagements');
@@ -180,7 +181,7 @@ describe('EngagementUpdateFacade', () => {
       return of(MOCK_ENGAGEMENTS);
     });
 
-    facade.loadEngagements();
+    facade.loadEngagements('FIRM-01');
     tick();
 
     expect(callCount).toBe(3);

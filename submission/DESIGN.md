@@ -44,9 +44,10 @@ The server is responsible for all data retrieval, diff invocation, and the trans
 ### Client / Server Contract
 
 ```typescript
-// GET /api/engagements/updates?firmId={firmId}
+// GET /api/firms/{firmId}/engagements/updates
 interface EngagementUpdateSummary {
   engagementId: string;
+  firmId: string;
   engagementName: string;
   templateId: string;
   templateDisplayName: string;
@@ -59,7 +60,7 @@ interface EngagementUpdateSummary {
   declinedVersion: number | null;
 }
 
-// GET /api/engagements/{engagementId}/update-details
+// GET /api/firms/{firmId}/engagements/{engagementId}/update-details
 interface EngagementUpdateDetails {
   engagementId: string;
   currentVersion: number;
@@ -92,7 +93,7 @@ interface HumanReadableChange {
   impact: 'HIGH' | 'MEDIUM' | 'LOW';
 }
 
-// POST /api/engagements/{engagementId}/decision
+// POST /api/firms/{firmId}/engagements/{engagementId}/decision
 interface UpdateDecisionRequest {
   decision: 'APPLY' | 'DECLINE';
   targetVersion: number; // optimistic concurrency: must match current latest
@@ -119,7 +120,33 @@ The raw-to-human transformation is performed **server-side**, inside the `RuleBa
 4. **Testability** — Pure function: `(diff, metadata) → summary`. Easy to unit test.
 5. **Extensibility** — A future LLM-based implementation can be swapped in behind the same `DiffSummaryTransformer` interface without touching the client.
 
-## 2. Implementation Plan
+## 2. Non-Functional Requirements
+
+### Scale
+
+- ~100 engagements per firm, ~tens of firms using shared product templates.
+- Template updates published approximately weekly — not high-frequency.
+- Change summaries keyed by `(templateId, fromVersion, toVersion)` are shared across all firms. Computed once per version gap, served to all. Storage volume is low (~tens of summary records).
+
+### Performance
+
+- **Hard constraint:** Loading an engagement file takes ~1 minute. The entire architecture exists to avoid this at query time.
+- **Read path:** Pure index and store lookups. No diff computation, no engagement loading, no template fetching. Latency is bounded by database read time only.
+- **Write path:** Diffs computed and summaries materialized asynchronously at template publication time. Processing is off the user's critical path — they see results only after materialization completes (`summaryAvailable` flag).
+
+### Security
+
+- **Firm-level data isolation (multi-tenancy):** All API endpoints are scoped under `/api/firms/{firmId}/`, making tenant context explicit at the URL level. The engagement index is partitioned by `firmId` — list queries enter through `findByFirmId(firmId)`, and single-entity lookups through `findById(firmId, engagementId)`, which returns empty if the engagement does not belong to the requesting firm. Cross-firm data leakage is a structural impossibility at the port boundary, not a correctness dependency on application-layer filtering.
+- **Data residency:** The index and summary stores contain only version metadata and human-readable summaries derived from shared templates. No firm-specific financial data leaves the engagement boundary. For deployments with data-residency requirements, the lightweight index can be co-located with the engagement store in the required region; summaries (template-derived, not firm-specific) can be replicated globally.
+- **Decision audit trail:** Every apply/decline decision records `(engagementId, decision, previousVersion, targetVersion, status)`. In the audit domain, every state transition must be traceable and defensible — this record is the minimum viable audit trail for template version decisions.
+
+### Observability
+
+- **Metrics:** Engagements per status (per firm, per template). Summary computation latency. Apply/decline rates. Time-to-decision from first notification.
+- **Alerts:** Engagements stuck in `COMPUTING` for more than 5 minutes. Index-to-template version inconsistencies detected by the reconciliation job.
+- **Logging:** Template publication events processed. Diff invocations and summary transformations. User decisions recorded. Reconciliation job results.
+
+## 3. Implementation Plan
 
 1. **Domain models** — Records and enums representing templates, engagements, diffs, and summaries.
 2. **Port interfaces** — Boundaries for external systems: diff tool, engagement index, template version provider, summary transformer.
@@ -132,7 +159,7 @@ The raw-to-human transformation is performed **server-side**, inside the `RuleBa
 9. **Angular Facade** — Public API for components. Exposes read-only signals and delegates commands to Effects. Components never touch the API or Store directly.
 10. **Angular components** — Engagement list with status indicators and error/retry UI. Update detail rendered in a modal overlay, reads directly from the Store via the Facade, and owns its own apply/decline actions.
 
-## 3. Testing Strategy
+## 4. Testing Strategy
 
 **Server (Java):**
 - `TemplateUpdateProcessorTest` — Write side: publish computes summaries and updates state, preserves declined status when `declinedVersion >= publishedVersion`, supersedes decline on newer version (clears `declinedVersion` to null), reconcile computes missing summaries, reconcile skips existing.
@@ -150,12 +177,6 @@ The raw-to-human transformation is performed **server-side**, inside the `RuleBa
 
 **Cross-cutting:**
 - Manual verification that TypeScript interfaces, Java records, and the API contract in this document use identical field names and types.
-
-## 4. Evaluation & Observability
-
-- **Metrics:** Count of engagements per status (per firm, per template). Summary computation latency. Apply/decline rates. Time-to-decision from first notification.
-- **Alerts:** Engagements stuck in `COMPUTING` for more than 5 minutes. Index-to-template version inconsistencies detected by the reconciliation job.
-- **Logging:** Template publication events processed. Diff invocations and summary transformations. User decisions recorded. Reconciliation job results.
 
 ## 5. Failure Modes & Tradeoffs
 

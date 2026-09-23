@@ -158,8 +158,10 @@ public class TemplateUpdateProcessorTest {
                 return records.stream().filter(e -> e.firmId().equals(firmId)).toList();
             }
             @Override
-            public Optional<EngagementRecord> findById(String engagementId) {
-                return records.stream().filter(e -> e.engagementId().equals(engagementId)).findFirst();
+            public Optional<EngagementRecord> findById(String firmId, String engagementId) {
+                return records.stream()
+                    .filter(e -> e.firmId().equals(firmId) && e.engagementId().equals(engagementId))
+                    .findFirst();
             }
             @Override
             public List<EngagementRecord> findByTemplateWithVersionBelow(String templateId, int belowVersion) {

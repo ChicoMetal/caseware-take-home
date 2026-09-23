@@ -23,14 +23,14 @@ const FAILURE_RATE = 0.3;
 @Injectable({ providedIn: 'root' })
 export class EngagementUpdateApi {
 
-  /** GET /api/engagements/updates?firmId={id} */
-  getEngagements(): Observable<EngagementUpdateSummary[]> {
+  /** GET /api/firms/{firmId}/engagements/updates */
+  getEngagements(firmId: string): Observable<EngagementUpdateSummary[]> {
     return this.simulateRequest(
-      () => structuredClone(FIXTURE_ENGAGEMENTS)
+      () => structuredClone(FIXTURE_ENGAGEMENTS.filter(e => e.firmId === firmId))
     );
   }
 
-  /** GET /api/engagements/{id}/update-details */
+  /** GET /api/firms/{firmId}/engagements/{id}/update-details */
   getEngagementDetails(engagementId: string): Observable<EngagementUpdateDetails> {
     return this.simulateRequest(() => {
       const details = FIXTURE_DETAILS[engagementId];
@@ -41,7 +41,7 @@ export class EngagementUpdateApi {
     });
   }
 
-  /** POST /api/engagements/{id}/decision */
+  /** POST /api/firms/{firmId}/engagements/{id}/decision */
   submitDecision(
     engagementId: string,
     request: UpdateDecisionRequest
