@@ -25,6 +25,8 @@ import org.junit.jupiter.api.Test;
 public class UpdateStateResolverTest {
 
     private static final Instant NOW = Instant.parse("2026-08-18T13:00:00Z");
+    private static final UserContext ADMIN = new UserContext("user-1", "FIRM-1", UserRole.ADMIN);
+    private static final UserContext VIEWER = new UserContext("user-2", "FIRM-1", UserRole.VIEWER);
 
     // --- Listing tests ---
 
@@ -41,7 +43,7 @@ public class UpdateStateResolverTest {
             emptySummaryRepository()
         );
 
-        List<EngagementUpdateSummary> results = resolver.listEngagementUpdates("FIRM-1");
+        List<EngagementUpdateSummary> results = resolver.listEngagementUpdates(ADMIN);
 
         assertEquals(3, results.size(), "count");
 
@@ -68,7 +70,7 @@ public class UpdateStateResolverTest {
             emptySummaryRepository()
         );
 
-        List<EngagementUpdateSummary> results = resolver.listEngagementUpdates("FIRM-1");
+        List<EngagementUpdateSummary> results = resolver.listEngagementUpdates(VIEWER);
         assertEquals(UpdateStatus.COMPUTING, results.get(0).status());
         assertFalse(results.get(0).summaryAvailable());
     }
@@ -92,7 +94,7 @@ public class UpdateStateResolverTest {
             )
         );
 
-        EngagementUpdateDetails details = resolver.getUpdateDetails("FIRM-1", "ENG-5");
+        EngagementUpdateDetails details = resolver.getUpdateDetails(ADMIN, "ENG-5");
         assertEquals(3, details.currentVersion());
         assertEquals(5, details.latestVersion());
         assertEquals(3, details.collapsedSummary().fromVersion());
@@ -112,7 +114,7 @@ public class UpdateStateResolverTest {
             emptySummaryRepository()
         );
 
-        assertThrows(IllegalStateException.class, () -> resolver.getUpdateDetails("FIRM-1", "ENG-6"));
+        assertThrows(IllegalStateException.class, () -> resolver.getUpdateDetails(ADMIN, "ENG-6"));
     }
 
     // --- Decision tests ---
@@ -130,7 +132,7 @@ public class UpdateStateResolverTest {
         );
 
         var decision = new UpdateDecision(DecisionType.APPLY, 5);
-        UpdateDecisionResponse response = resolver.processDecision("FIRM-1", "ENG-7", decision);
+        UpdateDecisionResponse response = resolver.processDecision(ADMIN, "ENG-7", decision);
 
         assertEquals(DecisionType.APPLY, response.decision());
         assertEquals(4, response.previousVersion());
@@ -152,7 +154,7 @@ public class UpdateStateResolverTest {
         );
 
         var decision = new UpdateDecision(DecisionType.DECLINE, 5);
-        UpdateDecisionResponse response = resolver.processDecision("FIRM-1", "ENG-8", decision);
+        UpdateDecisionResponse response = resolver.processDecision(ADMIN, "ENG-8", decision);
 
         assertEquals(DecisionType.DECLINE, response.decision());
         assertEquals(DecisionStatus.ACCEPTED, response.status());
@@ -171,7 +173,24 @@ public class UpdateStateResolverTest {
         );
 
         var staleDecision = new UpdateDecision(DecisionType.APPLY, 5);
-        assertThrows(IllegalStateException.class, () -> resolver.processDecision("FIRM-1", "ENG-9", staleDecision));
+        assertThrows(IllegalStateException.class, () -> resolver.processDecision(ADMIN, "ENG-9", staleDecision));
+    }
+
+    // --- Authorization tests ---
+
+    @Test
+    void testViewerCannotMakeDecisions() {
+        var eng = record("ENG-10", "FIRM-1", "Corp J", "AUDIT-CA", 4, 5, UpdateStatus.PENDING, null, true);
+        var latest = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
+
+        var resolver = new UpdateStateResolver(
+            stubIndexRepository(List.of(eng)),
+            stubTemplateProvider(latest),
+            emptySummaryRepository()
+        );
+
+        var decision = new UpdateDecision(DecisionType.APPLY, 5);
+        assertThrows(SecurityException.class, () -> resolver.processDecision(VIEWER, "ENG-10", decision));
     }
 
     // --- Helpers ---

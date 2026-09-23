@@ -137,6 +137,15 @@ The raw-to-human transformation is performed **server-side**, inside the `RuleBa
 ### Security
 
 - **Firm-level data isolation (multi-tenancy):** All API endpoints are scoped under `/api/firms/{firmId}/`, making tenant context explicit at the URL level. The engagement index is partitioned by `firmId` — list queries enter through `findByFirmId(firmId)`, and single-entity lookups through `findById(firmId, engagementId)`, which returns empty if the engagement does not belong to the requesting firm. Cross-firm data leakage is a structural impossibility at the port boundary, not a correctness dependency on application-layer filtering.
+- **Role-based authorization:** A `UserContext` record (`userId`, `firmId`, `role`) is extracted from the authentication token by the infrastructure layer and passed into domain services. The domain enforces access rules directly:
+
+  | Operation | Required Role | Enforcement |
+  |-----------|--------------|-------------|
+  | List engagements | Any authenticated (ADMIN, VIEWER) | Tenant isolation via `firmId` |
+  | View update details | Any authenticated (ADMIN, VIEWER) | Tenant isolation via `firmId` |
+  | Apply / Decline decision | ADMIN only | `processDecision` throws `SecurityException` for non-ADMIN |
+
+  The domain never inspects tokens — it receives a validated `UserContext` and checks `role` before mutating state. This keeps authorization logic testable without infrastructure dependencies.
 - **Data residency:** The index and summary stores contain only version metadata and human-readable summaries derived from shared templates. No firm-specific financial data leaves the engagement boundary. For deployments with data-residency requirements, the lightweight index can be co-located with the engagement store in the required region; summaries (template-derived, not firm-specific) can be replicated globally.
 - **Decision audit trail:** Every apply/decline decision records `(engagementId, decision, previousVersion, targetVersion, status)`. In the audit domain, every state transition must be traceable and defensible — this record is the minimum viable audit trail for template version decisions.
 
@@ -163,7 +172,7 @@ The raw-to-human transformation is performed **server-side**, inside the `RuleBa
 
 **Server (Java):**
 - `TemplateUpdateProcessorTest` — Write side: publish computes summaries and updates state, preserves declined status when `declinedVersion >= publishedVersion`, supersedes decline on newer version (clears `declinedVersion` to null), reconcile computes missing summaries, reconcile skips existing.
-- `UpdateStateResolverTest` — Read side: list returns pre-materialized state, COMPUTING state surfaced, detail reads from pre-computed store, missing summary throws, APPLY decision updates to UP_TO_DATE, DECLINE records `declinedVersion`, stale `targetVersion` rejected.
+- `UpdateStateResolverTest` — Read side: list returns pre-materialized state, COMPUTING state surfaced, detail reads from pre-computed store, missing summary throws, APPLY decision updates to UP_TO_DATE, DECLINE records `declinedVersion`, stale `targetVersion` rejected, VIEWER role denied on decision (SecurityException).
 - `RuleBasedDiffSummaryTransformerTest` — Verifies all three operation types (`add`, `replace`, `remove`) produce correct `HumanReadableChange` entries with appropriate types, descriptions, and impact levels. Verifies changes are grouped by section.
 
 **Client (Angular):**

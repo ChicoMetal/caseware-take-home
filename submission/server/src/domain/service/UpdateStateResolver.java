@@ -34,12 +34,13 @@ public class UpdateStateResolver {
     /**
      * Lists all engagements for a firm with their pre-materialized update status.
      * Maps index entries to API response objects.
+     * Requires any authenticated role (ADMIN or VIEWER).
      *
-     * @param firmId the audit firm identifier
+     * @param user the authenticated user context (provides firmId for tenant isolation)
      * @return list of engagement update summaries ready for the client
      */
-    public List<EngagementUpdateSummary> listEngagementUpdates(String firmId) {
-        List<EngagementRecord> engagements = indexRepository.findByFirmId(firmId);
+    public List<EngagementUpdateSummary> listEngagementUpdates(UserContext user) {
+        List<EngagementRecord> engagements = indexRepository.findByFirmId(user.firmId());
 
         return engagements.stream()
             .map(this::toSummary)
@@ -48,14 +49,15 @@ public class UpdateStateResolver {
 
     /**
      * Retrieves pre-computed change details for an engagement's pending update.
+     * Requires any authenticated role (ADMIN or VIEWER).
      *
-     * @param firmId       the firm requesting access (tenant isolation)
+     * @param user         the authenticated user context (provides firmId for tenant isolation)
      * @param engagementId the engagement to query
      * @return detail-level response with both summary views
      * @throws IllegalStateException if the engagement is not found or summaries not yet computed
      */
-    public EngagementUpdateDetails getUpdateDetails(String firmId, String engagementId) {
-        EngagementRecord engagement = indexRepository.findById(firmId, engagementId)
+    public EngagementUpdateDetails getUpdateDetails(UserContext user, String engagementId) {
+        EngagementRecord engagement = indexRepository.findById(user.firmId(), engagementId)
             .orElseThrow(() -> new IllegalStateException("Engagement not found: " + engagementId));
 
         TemplateVersion latest = templateProvider.getLatestVersion(engagement.templateId());
@@ -87,15 +89,23 @@ public class UpdateStateResolver {
 
     /**
      * Processes a user's decision to apply or decline a template update.
+     * Requires ADMIN role — viewers cannot make decisions.
      *
-     * @param firmId       the firm requesting access (tenant isolation)
+     * @param user         the authenticated user context (provides firmId + role check)
      * @param engagementId the engagement being acted on
      * @param decision     the user's decision
      * @return response confirming the outcome
+     * @throws SecurityException if the user lacks ADMIN role
      * @throws IllegalStateException if engagement not found or targetVersion is stale
      */
-    public UpdateDecisionResponse processDecision(String firmId, String engagementId, UpdateDecision decision) {
-        EngagementRecord engagement = indexRepository.findById(firmId, engagementId)
+    public UpdateDecisionResponse processDecision(UserContext user, String engagementId, UpdateDecision decision) {
+        if (user.role() != UserRole.ADMIN) {
+            throw new SecurityException(
+                "User %s lacks ADMIN role required for update decisions".formatted(user.userId())
+            );
+        }
+
+        EngagementRecord engagement = indexRepository.findById(user.firmId(), engagementId)
             .orElseThrow(() -> new IllegalStateException("Engagement not found: " + engagementId));
 
         if (decision.targetVersion() != engagement.latestVersion()) {
