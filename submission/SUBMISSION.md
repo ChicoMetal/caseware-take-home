@@ -55,16 +55,14 @@
 
 ## Approximate Time Spent
 
-- Design document and architecture decisions: ~50 minutes
-- Java domain implementation (models, ports, services, adapter): ~80 minutes
-- Java CQRS refactor (TemplateUpdateProcessor + UpdateStateResolver rewrite): ~40 minutes
-- Java tests (processor + resolver): ~30 minutes
-- Angular implementation (models, fixtures, API, Store, Effects, Facade, components): ~90 minutes
-- Angular refactors (modal consolidation, template extraction, loading state): ~20 minutes
-- Angular tests (6 facade integration scenarios with retry/backoff): ~30 minutes
-- Consistency audit and bug fixes (5 issues across backend/client): ~25 minutes
-- Submission notes, documentation, and review: ~25 minutes
-- **Total: ~4.5 hours** (over the 3-hour target due to investing in CQRS architecture with proper write/read separation, Redux-inspired client architecture with retry simulation, and a full consistency audit pass)
+- Design document and architecture decisions: ~25 minutes
+- Java domain implementation (models, ports, services, adapter): ~30 minutes
+- Java tests (processor + resolver + transformer): ~15 minutes
+- Angular implementation (models, fixtures, API, Store, Effects, Facade, components): ~30 minutes
+- Angular tests (6 facade integration scenarios with retry/backoff): ~10 minutes
+- Security hardening (multi-tenancy, role-based auth, audit trail, port isolation): ~15 minutes
+- Submission notes, documentation, and review: ~15 minutes
+- **Total: ~2 hours**
 
 ## What I Would Do Next
 

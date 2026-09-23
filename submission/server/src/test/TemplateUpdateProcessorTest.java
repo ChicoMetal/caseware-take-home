@@ -32,8 +32,10 @@ public class TemplateUpdateProcessorTest {
         var savedSummaries = new ArrayList<String>();
         var stateUpdates = new ArrayList<String>();
 
+        var allRecords = List.of(engAtV3, engAtV4);
         var processor = new TemplateUpdateProcessor(
-            trackingIndexRepository(List.of(engAtV3, engAtV4), stateUpdates),
+            trackingIndexRepository(allRecords, stateUpdates),
+            stubTemplateLookup(allRecords),
             stubDiffProvider(),
             stubTransformer(),
             stubTemplateProvider(v5, List.of(v4, v5)),
@@ -63,6 +65,7 @@ public class TemplateUpdateProcessorTest {
 
         var processor = new TemplateUpdateProcessor(
             trackingIndexRepository(List.of(declined), stateUpdates),
+            stubTemplateLookup(List.of(declined)),
             stubDiffProvider(),
             stubTransformer(),
             stubTemplateProvider(v5, List.of(v5)),
@@ -87,6 +90,7 @@ public class TemplateUpdateProcessorTest {
 
         var processor = new TemplateUpdateProcessor(
             trackingIndexRepository(List.of(declined), stateUpdates),
+            stubTemplateLookup(List.of(declined)),
             stubDiffProvider(),
             stubTransformer(),
             stubTemplateProvider(v6, List.of(v5, v6)),
@@ -106,6 +110,7 @@ public class TemplateUpdateProcessorTest {
 
         var processor = new TemplateUpdateProcessor(
             stubIndexRepository(List.of(engAtV4)),
+            stubTemplateLookup(List.of(engAtV4)),
             stubDiffProvider(),
             stubTransformer(),
             stubTemplateProvider(v5, List.of(v5)),
@@ -128,6 +133,7 @@ public class TemplateUpdateProcessorTest {
 
         var processor = new TemplateUpdateProcessor(
             stubIndexRepository(List.of(engAtV4)),
+            stubTemplateLookup(List.of(engAtV4)),
             stubDiffProvider(),
             stubTransformer(),
             stubTemplateProvider(v5, List.of(v5)),
@@ -164,16 +170,16 @@ public class TemplateUpdateProcessorTest {
                     .findFirst();
             }
             @Override
-            public List<EngagementRecord> findByTemplateWithVersionBelow(String templateId, int belowVersion) {
-                return records.stream()
-                    .filter(e -> e.templateId().equals(templateId) && e.templateVersion() < belowVersion).toList();
-            }
-            @Override
-            public void updateState(String engagementId, int templateVersion, UpdateStatus status,
+            public void updateState(String firmId, String engagementId, int templateVersion, UpdateStatus status,
                                     int latestVersion, Integer declinedVersion, boolean summaryAvailable) {
                 stateUpdates.add(engagementId + ":" + status + ":" + latestVersion + ":" + declinedVersion + ":" + summaryAvailable);
             }
         };
+    }
+
+    private static TemplateLookupRepository stubTemplateLookup(List<EngagementRecord> records) {
+        return (templateId, belowVersion) -> records.stream()
+            .filter(e -> e.templateId().equals(templateId) && e.templateVersion() < belowVersion).toList();
     }
 
     private static TemplateDiffProvider stubDiffProvider() {

@@ -101,6 +101,7 @@ interface UpdateDecisionRequest {
 
 interface UpdateDecisionResponse {
   engagementId: string;
+  decidedBy: string;       // userId of the actor who made the decision
   decision: 'APPLY' | 'DECLINE';
   previousVersion: number;
   targetVersion: number;
@@ -146,8 +147,26 @@ The raw-to-human transformation is performed **server-side**, inside the `RuleBa
   | Apply / Decline decision | ADMIN only | `processDecision` throws `SecurityException` for non-ADMIN |
 
   The domain never inspects tokens — it receives a validated `UserContext` and checks `role` before mutating state. This keeps authorization logic testable without infrastructure dependencies.
+- **Non-enumerable identifiers:** All entity primary keys (`engagementId`, `firmId`, `userId`) use UUID v7, which combines a millisecond timestamp prefix (enabling time-ordered indexing) with 74 random bits. This makes identifiers non-sequential and non-guessable — an attacker who discovers one valid ID cannot predict or enumerate others. Combined with tenant-scoped lookups, even a valid ID from another firm returns empty.
 - **Data residency:** The index and summary stores contain only version metadata and human-readable summaries derived from shared templates. No firm-specific financial data leaves the engagement boundary. For deployments with data-residency requirements, the lightweight index can be co-located with the engagement store in the required region; summaries (template-derived, not firm-specific) can be replicated globally.
-- **Decision audit trail:** Every apply/decline decision records `(engagementId, decision, previousVersion, targetVersion, status)`. In the audit domain, every state transition must be traceable and defensible — this record is the minimum viable audit trail for template version decisions.
+- **Decision audit trail:** Every apply/decline decision is durably persisted via the `DecisionAuditLog` port, recording `(engagementId, decidedBy, decision, previousVersion, targetVersion, status)`. The `decidedBy` field captures the `userId` of the actor making the decision, enabling traceability to a specific user. The audit log is a separate concern from the read model (index) — the domain emits the event; the infrastructure layer decides how and where it is stored (database table, event bus, structured log sink). This separation keeps the read model clean while ensuring every state transition is traceable and defensible.
+- **Input validation:** All domain model records use compact constructors with `Objects.requireNonNull` for required fields and explicit range checks (e.g., `targetVersion > 0`). Invalid input is rejected at the domain boundary before reaching any business logic.
+- **Generic error messages:** Security-sensitive operations (authorization failures, entity lookups) return generic messages such as "Insufficient permissions" or "Engagement not found" — never leaking internal identifiers (userIds, firmIds) in error responses that could aid enumeration attacks.
+- **Port-level write isolation:** The `TemplateLookupRepository` port (cross-tenant `findByTemplateWithVersionBelow`) is separated from the tenant-scoped `EngagementIndexRepository`. This is a compile-time enforcement: read-side code literally cannot call cross-tenant queries because the interface is not injected into read-side services. The write-side service documents that it must only be exposed behind infrastructure-authenticated boundaries (mTLS, service accounts).
+
+#### Security Roadmap (Not Implemented — Documented for Production)
+
+The following items are identified for a production deployment but are outside the scope of this exercise:
+
+| # | Category | Finding | Mitigation |
+|---|----------|---------|------------|
+| M7 | Observability | No security event logging for failed authorization or tenant mismatch attempts | Emit structured security events (`AUTH_DENIED`, `TENANT_MISMATCH`) to a dedicated audit log. Feed into SIEM for anomaly detection — repeated 403s from one source signal enumeration. |
+| M8 | Infrastructure | No rate limiting on decision endpoint | Apply rate limiting at the API gateway layer (e.g., 10 decisions/min per user). The decision endpoint mutates state and should be protected against abuse. |
+| M9 | Input Sanitization | Diff operation paths rendered client-side could carry XSS payloads | Sanitize `path` and `description` fields in the `RuleBasedDiffSummaryTransformer` before storage. Angular's default template binding escapes HTML, but defense-in-depth requires server-side sanitization as well. |
+| M10 | Compliance | Mandatory updates and maker-checker workflows for compliance-critical decisions | For templates flagged as compliance-critical, the DECLINE action should require a justification comment and a second approver (maker-checker pattern). This is a business-rule extension on top of the existing role check. |
+| L11 | Web Security | No CSRF protection on the decision endpoint | The decision endpoint is a state-changing POST. In a cookie-based session setup, implement CSRF tokens (e.g., Angular's `HttpClientXsrfModule`). If using Bearer tokens exclusively, CSRF is mitigated by design. |
+| L12 | Infrastructure | TLS termination, token rotation, and session management not specified | All API traffic over TLS 1.3. JWT tokens with short expiry (~15 min) and refresh rotation. Session management delegated to the identity provider. |
+| L13 | Resilience | No graceful degradation for unknown diff operations | If the diff tool returns an operation type outside `{add, replace, remove}`, the transformer should log a warning and produce a generic "Unknown change" entry rather than failing. Ensures forward compatibility with diff tool upgrades. |
 
 ### Observability
 

@@ -55,6 +55,7 @@ export class EngagementUpdateApi {
 
       return {
         engagementId,
+        decidedBy: 'current-user',
         decision: request.decision,
         previousVersion,
         targetVersion: request.targetVersion,

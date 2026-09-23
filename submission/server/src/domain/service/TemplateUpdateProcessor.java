@@ -10,29 +10,40 @@ import java.util.Objects;
 /**
  * Domain service that processes template publication events.
  *
- * When a new template version is published, this service:
- * 1. Identifies all engagements using that template with a lagging version.
- * 2. Computes diffs for each distinct version gap (collapsed and step-by-step).
- * 3. Transforms diffs into human-readable summaries and stores them.
- * 4. Updates each affected engagement's materialized state in the index.
+ * <p>When a new template version is published, this service:
+ * <ol>
+ *   <li>Identifies all engagements using that template with a lagging version.</li>
+ *   <li>Computes diffs for each distinct version gap (collapsed and step-by-step).</li>
+ *   <li>Transforms diffs into human-readable summaries and stores them.</li>
+ *   <li>Updates each affected engagement's materialized state in the index.</li>
+ * </ol>
  *
- * This is the "write side" of the CQRS pattern — it pre-computes summaries
+ * <p>This is the "write side" of the CQRS pattern — it pre-computes summaries
  * and materializes engagement states so the read side is a simple lookup.
+ *
+ * <p><b>Security boundary:</b> This service operates across all firms (cross-tenant)
+ * by design. It must only be invoked by infrastructure-authenticated callers
+ * (event handlers, scheduled jobs) — never exposed as a client-facing API.
+ * Authentication is enforced at the infrastructure layer (e.g., mTLS on the
+ * internal event bus, service account credentials for the scheduler).
  */
 public class TemplateUpdateProcessor {
 
     private final EngagementIndexRepository indexRepository;
+    private final TemplateLookupRepository templateLookup;
     private final TemplateDiffProvider diffProvider;
     private final DiffSummaryTransformer summaryTransformer;
     private final TemplateVersionProvider templateProvider;
     private final UpdateSummaryRepository summaryRepository;
 
     public TemplateUpdateProcessor(EngagementIndexRepository indexRepository,
+                                   TemplateLookupRepository templateLookup,
                                    TemplateDiffProvider diffProvider,
                                    DiffSummaryTransformer summaryTransformer,
                                    TemplateVersionProvider templateProvider,
                                    UpdateSummaryRepository summaryRepository) {
         this.indexRepository = Objects.requireNonNull(indexRepository, "indexRepository");
+        this.templateLookup = Objects.requireNonNull(templateLookup, "templateLookup");
         this.diffProvider = Objects.requireNonNull(diffProvider, "diffProvider");
         this.summaryTransformer = Objects.requireNonNull(summaryTransformer, "summaryTransformer");
         this.templateProvider = Objects.requireNonNull(templateProvider, "templateProvider");
@@ -49,7 +60,7 @@ public class TemplateUpdateProcessor {
      * @return the number of engagements whose state was updated
      */
     public int processTemplatePublished(String templateId, int publishedVersion) {
-        List<EngagementRecord> affected = indexRepository.findByTemplateWithVersionBelow(
+        List<EngagementRecord> affected = templateLookup.findByTemplateWithVersionBelow(
             templateId, publishedVersion
         );
 
@@ -72,6 +83,7 @@ public class TemplateUpdateProcessor {
             Integer clearedDecline = (newStatus == UpdateStatus.PENDING) ? null : engagement.declinedVersion();
 
             indexRepository.updateState(
+                engagement.firmId(),
                 engagement.engagementId(),
                 engagement.templateVersion(),
                 newStatus,
@@ -95,7 +107,7 @@ public class TemplateUpdateProcessor {
     public int reconcile(String templateId) {
         TemplateVersion latest = templateProvider.getLatestVersion(templateId);
 
-        List<EngagementRecord> lagging = indexRepository.findByTemplateWithVersionBelow(
+        List<EngagementRecord> lagging = templateLookup.findByTemplateWithVersionBelow(
             templateId, latest.version()
         );
 
@@ -123,6 +135,7 @@ public class TemplateUpdateProcessor {
                 if (summaryAvailable) {
                     UpdateStatus newStatus = resolveStatusAfterPublish(engagement, latest.version());
                     indexRepository.updateState(
+                        engagement.firmId(),
                         engagement.engagementId(),
                         engagement.templateVersion(),
                         newStatus,

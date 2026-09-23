@@ -128,6 +128,7 @@ export interface UpdateDecisionRequest {
 /** Server acknowledgment confirming the decision was recorded. */
 export interface UpdateDecisionResponse {
   engagementId: string;
+  decidedBy: string;
   decision: DecisionType;
   previousVersion: number;
   targetVersion: number;

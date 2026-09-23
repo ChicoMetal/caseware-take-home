@@ -125,6 +125,7 @@ describe('EngagementUpdateFacade', () => {
   it('should transition to UP_TO_DATE on APPLY decision', fakeAsync(() => {
     const response: UpdateDecisionResponse = {
       engagementId: 'ENG-TEST-1',
+      decidedBy: 'user-1',
       decision: DecisionType.APPLY,
       previousVersion: 4,
       targetVersion: 5,
@@ -150,6 +151,7 @@ describe('EngagementUpdateFacade', () => {
   it('should transition to DECLINED on DECLINE decision', fakeAsync(() => {
     const response: UpdateDecisionResponse = {
       engagementId: 'ENG-TEST-1',
+      decidedBy: 'user-1',
       decision: DecisionType.DECLINE,
       previousVersion: 4,
       targetVersion: 5,

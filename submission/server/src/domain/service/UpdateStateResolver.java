@@ -1,6 +1,7 @@
 package domain.service;
 
 import domain.model.*;
+import domain.port.DecisionAuditLog;
 import domain.port.EngagementIndexRepository;
 import domain.port.TemplateVersionProvider;
 import domain.port.UpdateSummaryRepository;
@@ -22,13 +23,16 @@ public class UpdateStateResolver {
     private final EngagementIndexRepository indexRepository;
     private final TemplateVersionProvider templateProvider;
     private final UpdateSummaryRepository summaryRepository;
+    private final DecisionAuditLog auditLog;
 
     public UpdateStateResolver(EngagementIndexRepository indexRepository,
                                TemplateVersionProvider templateProvider,
-                               UpdateSummaryRepository summaryRepository) {
+                               UpdateSummaryRepository summaryRepository,
+                               DecisionAuditLog auditLog) {
         this.indexRepository = Objects.requireNonNull(indexRepository, "indexRepository");
         this.templateProvider = Objects.requireNonNull(templateProvider, "templateProvider");
         this.summaryRepository = Objects.requireNonNull(summaryRepository, "summaryRepository");
+        this.auditLog = Objects.requireNonNull(auditLog, "auditLog");
     }
 
     /**
@@ -99,14 +103,16 @@ public class UpdateStateResolver {
      * @throws IllegalStateException if engagement not found or targetVersion is stale
      */
     public UpdateDecisionResponse processDecision(UserContext user, String engagementId, UpdateDecision decision) {
+        Objects.requireNonNull(user, "user");
+        Objects.requireNonNull(engagementId, "engagementId");
+        Objects.requireNonNull(decision, "decision");
+
         if (user.role() != UserRole.ADMIN) {
-            throw new SecurityException(
-                "User %s lacks ADMIN role required for update decisions".formatted(user.userId())
-            );
+            throw new SecurityException("Insufficient permissions");
         }
 
         EngagementRecord engagement = indexRepository.findById(user.firmId(), engagementId)
-            .orElseThrow(() -> new IllegalStateException("Engagement not found: " + engagementId));
+            .orElseThrow(() -> new IllegalStateException("Engagement not found"));
 
         if (decision.targetVersion() != engagement.latestVersion()) {
             throw new IllegalStateException(
@@ -119,6 +125,7 @@ public class UpdateStateResolver {
 
         if (decision.decision() == DecisionType.APPLY) {
             indexRepository.updateState(
+                user.firmId(),
                 engagementId,
                 decision.targetVersion(),
                 UpdateStatus.UP_TO_DATE,
@@ -126,12 +133,15 @@ public class UpdateStateResolver {
                 null,
                 false
             );
-            return new UpdateDecisionResponse(
-                engagementId, DecisionType.APPLY, previousVersion,
+            var response = new UpdateDecisionResponse(
+                engagementId, user.userId(), DecisionType.APPLY, previousVersion,
                 decision.targetVersion(), DecisionStatus.PROCESSING
             );
+            auditLog.record(response);
+            return response;
         } else {
             indexRepository.updateState(
+                user.firmId(),
                 engagementId,
                 engagement.templateVersion(),
                 UpdateStatus.DECLINED,
@@ -139,10 +149,12 @@ public class UpdateStateResolver {
                 decision.targetVersion(),
                 engagement.summaryAvailable()
             );
-            return new UpdateDecisionResponse(
-                engagementId, DecisionType.DECLINE, previousVersion,
+            var response = new UpdateDecisionResponse(
+                engagementId, user.userId(), DecisionType.DECLINE, previousVersion,
                 decision.targetVersion(), DecisionStatus.ACCEPTED
             );
+            auditLog.record(response);
+            return response;
         }
     }
 

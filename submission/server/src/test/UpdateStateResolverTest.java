@@ -1,6 +1,7 @@
 package test;
 
 import domain.model.*;
+import domain.port.DecisionAuditLog;
 import domain.port.EngagementIndexRepository;
 import domain.port.TemplateVersionProvider;
 import domain.port.UpdateSummaryRepository;
@@ -40,7 +41,8 @@ public class UpdateStateResolverTest {
         var resolver = new UpdateStateResolver(
             stubIndexRepository(List.of(eng1, eng2, eng3)),
             stubTemplateProvider(latest),
-            emptySummaryRepository()
+            emptySummaryRepository(),
+            noopAuditLog()
         );
 
         List<EngagementUpdateSummary> results = resolver.listEngagementUpdates(ADMIN);
@@ -67,7 +69,8 @@ public class UpdateStateResolverTest {
         var resolver = new UpdateStateResolver(
             stubIndexRepository(List.of(eng)),
             stubTemplateProvider(latest),
-            emptySummaryRepository()
+            emptySummaryRepository(),
+            noopAuditLog()
         );
 
         List<EngagementUpdateSummary> results = resolver.listEngagementUpdates(VIEWER);
@@ -91,7 +94,8 @@ public class UpdateStateResolverTest {
             stubSummaryRepository(
                 Map.of("AUDIT-CA:3:5", collapsed),
                 Map.of("AUDIT-CA:3:5", List.of(step1, step2))
-            )
+            ),
+            noopAuditLog()
         );
 
         EngagementUpdateDetails details = resolver.getUpdateDetails(ADMIN, "ENG-5");
@@ -111,7 +115,8 @@ public class UpdateStateResolverTest {
         var resolver = new UpdateStateResolver(
             stubIndexRepository(List.of(eng)),
             stubTemplateProvider(latest),
-            emptySummaryRepository()
+            emptySummaryRepository(),
+            noopAuditLog()
         );
 
         assertThrows(IllegalStateException.class, () -> resolver.getUpdateDetails(ADMIN, "ENG-6"));
@@ -124,21 +129,25 @@ public class UpdateStateResolverTest {
         var eng = record("ENG-7", "FIRM-1", "Corp G", "AUDIT-CA", 4, 5, UpdateStatus.PENDING, null, true);
         var latest = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
         var stateUpdates = new ArrayList<String>();
+        var auditEvents = new ArrayList<String>();
 
         var resolver = new UpdateStateResolver(
             trackingIndexRepository(List.of(eng), stateUpdates),
             stubTemplateProvider(latest),
-            emptySummaryRepository()
+            emptySummaryRepository(),
+            trackingAuditLog(auditEvents)
         );
 
         var decision = new UpdateDecision(DecisionType.APPLY, 5);
         UpdateDecisionResponse response = resolver.processDecision(ADMIN, "ENG-7", decision);
 
+        assertEquals("user-1", response.decidedBy());
         assertEquals(DecisionType.APPLY, response.decision());
         assertEquals(4, response.previousVersion());
         assertEquals(5, response.targetVersion());
         assertEquals(DecisionStatus.PROCESSING, response.status());
         assertTrue(stateUpdates.contains("ENG-7:UP_TO_DATE:5:null:false"), "state updated");
+        assertTrue(auditEvents.contains("ENG-7:user-1:APPLY"), "audit event recorded");
     }
 
     @Test
@@ -146,19 +155,23 @@ public class UpdateStateResolverTest {
         var eng = record("ENG-8", "FIRM-1", "Corp H", "AUDIT-CA", 4, 5, UpdateStatus.PENDING, null, true);
         var latest = new TemplateVersion("AUDIT-CA", "Canadian Audit Engagement", 5, NOW);
         var stateUpdates = new ArrayList<String>();
+        var auditEvents = new ArrayList<String>();
 
         var resolver = new UpdateStateResolver(
             trackingIndexRepository(List.of(eng), stateUpdates),
             stubTemplateProvider(latest),
-            emptySummaryRepository()
+            emptySummaryRepository(),
+            trackingAuditLog(auditEvents)
         );
 
         var decision = new UpdateDecision(DecisionType.DECLINE, 5);
         UpdateDecisionResponse response = resolver.processDecision(ADMIN, "ENG-8", decision);
 
+        assertEquals("user-1", response.decidedBy());
         assertEquals(DecisionType.DECLINE, response.decision());
         assertEquals(DecisionStatus.ACCEPTED, response.status());
         assertTrue(stateUpdates.contains("ENG-8:DECLINED:5:5:true"), "state updated with declinedVersion");
+        assertTrue(auditEvents.contains("ENG-8:user-1:DECLINE"), "audit event recorded");
     }
 
     @Test
@@ -169,7 +182,8 @@ public class UpdateStateResolverTest {
         var resolver = new UpdateStateResolver(
             stubIndexRepository(List.of(eng)),
             stubTemplateProvider(latest),
-            emptySummaryRepository()
+            emptySummaryRepository(),
+            noopAuditLog()
         );
 
         var staleDecision = new UpdateDecision(DecisionType.APPLY, 5);
@@ -186,7 +200,8 @@ public class UpdateStateResolverTest {
         var resolver = new UpdateStateResolver(
             stubIndexRepository(List.of(eng)),
             stubTemplateProvider(latest),
-            emptySummaryRepository()
+            emptySummaryRepository(),
+            noopAuditLog()
         );
 
         var decision = new UpdateDecision(DecisionType.APPLY, 5);
@@ -215,12 +230,7 @@ public class UpdateStateResolverTest {
                     .findFirst();
             }
             @Override
-            public List<EngagementRecord> findByTemplateWithVersionBelow(String templateId, int belowVersion) {
-                return records.stream()
-                    .filter(e -> e.templateId().equals(templateId) && e.templateVersion() < belowVersion).toList();
-            }
-            @Override
-            public void updateState(String engagementId, int templateVersion, UpdateStatus status,
+            public void updateState(String firmId, String engagementId, int templateVersion, UpdateStatus status,
                                     int latestVersion, Integer declinedVersion, boolean summaryAvailable) {}
         };
     }
@@ -239,12 +249,7 @@ public class UpdateStateResolverTest {
                     .findFirst();
             }
             @Override
-            public List<EngagementRecord> findByTemplateWithVersionBelow(String templateId, int belowVersion) {
-                return records.stream()
-                    .filter(e -> e.templateId().equals(templateId) && e.templateVersion() < belowVersion).toList();
-            }
-            @Override
-            public void updateState(String engagementId, int templateVersion, UpdateStatus status,
+            public void updateState(String firmId, String engagementId, int templateVersion, UpdateStatus status,
                                     int latestVersion, Integer declinedVersion, boolean summaryAvailable) {
                 stateUpdates.add(engagementId + ":" + status + ":" + latestVersion + ":" + declinedVersion + ":" + summaryAvailable);
             }
@@ -258,6 +263,16 @@ public class UpdateStateResolverTest {
             @Override
             public List<TemplateVersion> getVersionsBetween(String templateId, int from, int to) { return emptyList(); }
         };
+    }
+
+    private static DecisionAuditLog noopAuditLog() {
+        return decision -> {};
+    }
+
+    private static DecisionAuditLog trackingAuditLog(List<String> auditEvents) {
+        return decision -> auditEvents.add(
+            decision.engagementId() + ":" + decision.decidedBy() + ":" + decision.decision()
+        );
     }
 
     private static UpdateSummaryRepository emptySummaryRepository() {
